@@ -1,0 +1,30 @@
+I have an EXISTING project: an NJ Pick 3 lottery statistics and historical-results analysis web app built in plain HTML/JavaScript (single-file app), NOT Python. An external audit is complete — read PROJECT_AUDIT.md and ROADMAP.md first. The base file to build on is NJ_Pick3_Ghost_Engine_v7_live_sync.html. Its embedded dataset (26,655 draws, 1975–2026, Fireball separated) is verified correct.
+
+IMPORTANT RULES:
+1. Do not delete, replace, or rewrite existing files without examining them first. Do not start a new app from scratch.
+2. The only data source of truth is data/nj_numbers_canonical.csv (game, date, draw, digits, fireball, prize_straight) — game is P3 or P4, digits are dash-separated. All 26,655 current rows are P3; the app must support a P4 tab that reads the same file and shows "history building" until backfill data arrives. The automatic updater (scripts/update_results.py + .github/workflows/update-results.yml) already collects BOTH games daily — do not replace it with in-browser fetching.
+3. Pick 3 statistics use d1,d2,d3 only. The fireball column is a separate add-on digit (post 2017-03-10) shown only as a clearly labeled option.
+4. Do not fabricate results, probabilities, or payouts. Do not claim the app predicts winning numbers. No ticket sales, wagering, or real-money gambling features. Every screen keeps the disclaimer: drawings are random; history does not guarantee future results.
+5. No API keys, passwords, or secrets in source code. Include a .gitignore covering .env and secrets.
+6. Explain findings and get my approval before major changes.
+
+TASK 1 — FIX VERIFIED BUGS (from the audit):
+a) payoutInfo() hardcodes fixed payouts ($290/$330 exact, $40/$80 box, Fireball variants). NJ Pick 3 is PARI-MUTUEL — payouts vary every draw. Replace fixed numbers with historical averages and ranges computed from the prize_straight column in the canonical data, clearly labeled "historical average — actual payouts vary by draw."
+b) Remove the arbitrary digitBonus (+0.12 for combos containing 3, +0.10 for 6) from the scoring. Relabel all "overdue" features as descriptive history, never as prediction. Keep crowd-avoidance scoring — it is legitimate for a pari-mutuel game (fewer co-winners means a larger share IF you win) — and label it exactly that way.
+c) Build the missing Odds Calculator module (odds.js) with automated tests: straight = 1/1,000; 6-way box (3 unique digits) = 1/166.67; 3-way box (one pair) = 1/333.33; triple = straight only 1/1,000. Show cost-vs-coverage for multi-combo plays (e.g., 10 combos = 10/1,000 exact-match chance).
+
+TASK 2 — AUTOMATED DAILY RESULTS (no servers, no CORS proxies):
+Replace the in-browser fetch of njlottery.com (fails on CORS; the AllOrigins/Jina proxy fallbacks are unreliable) with this architecture:
+- A GitHub Actions workflow on a daily schedule (cron) runs a small Node or Python script that retrieves the latest NJ Pick 3 midday and evening results from the NJ Lottery website, validates them (3 digits 0–9 plus optional fireball digit), appends them to data/results.json in the repo, and commits.
+- The app fetches data/results.json from its own origin at load — no CORS issues.
+- Keep the existing manual-entry and bulk-paste features as backup.
+- The script must fail loudly (workflow error) rather than write malformed data, and must never overwrite historical rows.
+
+TASK 3 — MVP CLEANUP:
+- One clean, mobile-first app: Odds Calculator, Historical Results Explorer (search by date/number/draw type), Frequency Analysis (Fireball excluded by default, optional overlay), Combination Analyzer (unique/double/triple), payout history viewer, data-source + last-updated notice, responsible-use disclaimer.
+- Add a PWA manifest, icons, and service worker so users can Add to Home Screen on iPhone and use it like an app.
+- Prepare for static deployment on GitHub Pages or Netlify.
+- Plan for (but do not yet build) Supabase login and Stripe payments; structure the code so premium gating can be added without a rewrite.
+- Future-proof the data model with a game column (P3 now; P4 to be added when Pick 4 historical data is supplied — Pick 4 odds: straight 1/10,000; 24-way box 1/416.67; 12-way 1/833.33; 6-way 1/1,666.67; 4-way 1/2,500).
+
+Work in stages. After Task 1, stop and show me what changed before proceeding.

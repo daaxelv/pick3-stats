@@ -1,0 +1,39 @@
+name: Update NJ lottery results
+
+on:
+  schedule:
+    # Runs at 3:30 AM and 6:30 PM UTC = ~11:30 PM and ~1:30 PM Eastern,
+    # shortly after the evening and midday drawings.
+    - cron: "30 3 * * *"
+    - cron: "30 18 * * *"
+  workflow_dispatch: {}   # lets you also run it manually with one click
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch latest draws
+        run: python scripts/update_results.py
+
+      - name: Commit new results
+        run: |
+          git config user.name "results-bot"
+          git config user.email "actions@github.com"
+          git add data/nj_numbers_canonical.csv
+          if git diff --cached --quiet; then
+            echo "Nothing new to commit."
+          else
+            git commit -m "Auto-update lottery results $(date -u +%F)"
+            git push
+          fi

@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NJ Pick 3 Ghost Combo Engine — Live Sync Edition</title>
+<style>
+:root {
+  --bg:#061018; --panel:#0d1822; --panel2:#132434; --line:#21435d;
+  --text:#d7e8f4; --muted:#8fb2c8; --cyan:#27d7ff; --green:#46e58c; --gold:#ffd166; --red:#ff6b6b; --purple:#b388ff;
+}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#061018,#081521 35%,#0a1320);color:var(--text);font-family:Arial,sans-serif;}
+.wrap{max-width:1400px;margin:0 auto;padding:22px;}
+.header{padding:20px 0 14px;border-bottom:1px solid var(--line);margin-bottom:18px;}
+.h1{font-size:34px;font-weight:800;letter-spacing:.5px} .sub{color:var(--muted);margin-top:6px;line-height:1.5}
+.disclaimer{margin-top:10px;color:var(--gold);font-size:13px}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:18px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1.4px} .v{font-size:24px;font-weight:800;margin-top:6px;color:var(--cyan)}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+select,button,input{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px}
+button{cursor:pointer;font-weight:700} button.primary{background:linear-gradient(135deg,var(--cyan),#0aa7d3);color:#021018;border:none} button.secondary{background:linear-gradient(135deg,var(--gold),#d29d17);color:#201400;border:none}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 18px} .tab{padding:10px 16px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);cursor:pointer} .tab.active{background:#102638;color:var(--cyan);border-color:var(--cyan)}
+.tabpane{display:none} .tabpane.active{display:block}
+.grid2{display:grid;grid-template-columns:1.2fr .8fr;gap:16px} @media (max-width:1000px){.grid2{grid-template-columns:1fr}}
+.sectionTitle{font-size:18px;font-weight:800;margin:0 0 12px;color:var(--cyan)}
+.tableWrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:13px} th,td{padding:10px 12px;border-bottom:1px solid #1a3245;vertical-align:top} th{background:#0f2030;color:var(--muted);text-transform:uppercase;font-size:11px;letter-spacing:1px;position:sticky;top:0} tr:hover td{background:#0d1c2b}
+.badges{display:flex;gap:6px;flex-wrap:wrap} .badge{padding:2px 8px;border-radius:999px;font-size:11px;border:1px solid} .b-green{color:var(--green);border-color:#2f7f54;background:#0d2016} .b-gold{color:var(--gold);border-color:#8a6a20;background:#221a08} .b-purple{color:var(--purple);border-color:#6f58a4;background:#181129} .b-red{color:var(--red);border-color:#8a3b3b;background:#281011}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px} @media (max-width:900px){.cols{grid-template-columns:1fr}}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.planGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.plan{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:14px} .plan.top{border-color:var(--gold)} .combo{font-size:28px;font-weight:900;letter-spacing:4px;color:var(--gold)} .meta{color:var(--muted);font-size:13px;line-height:1.5}
+.notice{padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#0c1a27;color:var(--muted);line-height:1.55}
+.small{font-size:12px;color:var(--muted)}
+.good{color:var(--green)} .warn{color:var(--gold)} .danger{color:var(--red)}
+.formGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.footerSpace{height:40px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="countdownBar" style="background:linear-gradient(135deg,rgba(255,209,102,0.08),rgba(39,215,255,0.05));border:1px solid rgba(255,209,102,0.25);border-radius:12px;padding:12px 20px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+  <div>
+    <div style="font-size:11px;color:#8fb2c8;letter-spacing:2px;text-transform:uppercase;font-family:Arial,sans-serif;">Next NJ Pick 3 Draw</div>
+    <div id="nextDrawName" style="font-size:14px;color:#ffd166;font-weight:700;margin-top:2px;">Loading...</div>
+  </div>
+  <div style="text-align:center;">
+    <div style="font-size:11px;color:#8fb2c8;letter-spacing:2px;text-transform:uppercase;font-family:Arial,sans-serif;">Countdown</div>
+    <div id="cdTimer" style="font-size:28px;font-weight:900;color:#ffd166;letter-spacing:3px;font-family:ui-monospace,monospace;">--:--:--</div>
+  </div>
+  <div style="text-align:right;">
+    <div style="font-size:11px;color:#8fb2c8;letter-spacing:2px;text-transform:uppercase;font-family:Arial,sans-serif;">Today</div>
+    <div id="todayStr" style="font-size:13px;color:#ffd166;font-weight:600;margin-top:2px;">--</div>
+  </div>
+</div>
+<div class="header">
+    <div class="h1">NJ Pick 3 Ghost Combo Engine · Live Sync Edition</div>
+    <div class="sub">Three engines in one app: <strong>Midday</strong>, <strong>Evening</strong>, and <strong>Combined</strong>. Data: <strong>26,655 draws · 1975–2026</strong>. Engine auto-reruns after each saved result or live sync.</div>
+    <div class="disclaimer">This tool does not change the underlying 1-in-1,000 draw odds. It is designed to help compare crowd-avoidance, historical rarity, and overdue patterns so you can target less-shared plays.</div>
+  </div>
+
+  <div class="summary" id="topSummary"></div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-tab="eve">Evening Engine</button>
+    <button class="tab" data-tab="mid">Midday Engine</button>
+    <button class="tab" data-tab="both">Combined Engine</button>
+    <button class="tab" data-tab="tracker">Ticket Tracker</button>
+    <button class="tab" data-tab="data">Data Coverage</button>
+  </div>
+
+  <div class="tabpane active" id="pane-eve"></div>
+  <div class="tabpane" id="pane-mid"></div>
+  <div class="tabpane" id="pane-both"></div>
+  <div class="tabpane" id="pane-tracker"></div>
+  <div class="tabpane" id="pane-data"></div>
+  <div class="footerSpace"></div>
+</div>
+<script>const ENGINE_DATA = {"generated_at":"2026-03-23T12:00:00Z","coverage_notes":{"pick3_started":"1975-05-22","midday_started":"2001-11-12","fireball_started":"2017-02-27","post_fireball_rule":"Post-2017 rows parsed as 3 Pick-3 digits + 1 Fireball digit stored separately."},"datasets":{"EVE":{"label":"Evening","total_draws":17783,"date_start":"1975-05-22","date_end":"2026-03-22","fireball_draws":3290,"combo_freq":[17,21,16,21,11,25,11,19,33,15,16,16,14,19,20,17,11,13,19,18,15,18,14,24,14,17,22,17,20,16,10,19,12,18,19,13,27,17,19,14,20,23,17,21,13,8,18,13,18,21,13,19,15,15,20,22,18,19,17,15,15,8,16,15,21,22,16,23,18,17,14,9,22,18,27,22,18,16,20,16,15,28,12,18,12,19,19,12,18,18,23,9,21,18,19,20,8,23,21,23,15,28,21,11,14,20,20,13,15,18,18,18,15,21,27,29,14,23,14,23,13,18,19,26,15,26,22,10,20,20,15,18,17,17,17,23,18,18,8,18,20,24,15,18,22,18,22,20,18,12,14,24,15,19,23,16,10,14,13,13,24,16,9,15,22,19,20,16,15,22,13,21,11,17,12,20,18,14,16,14,22,18,17,12,14,21,18,15,21,14,12,14,21,8,22,18,18,24,20,23,18,16,17,17,14,15,16,18,20,17,16,29,17,10,19,10,17,10,19,29,26,23,22,9,16,17,13,21,22,19,17,18,11,16,16,17,22,13,17,28,18,20,9,17,20,13,18,15,22,10,19,22,11,25,18,23,16,24,20,14,20,13,15,19,20,26,10,15,19,21,27,21,18,12,25,20,21,21,16,17,17,21,23,17,12,16,17,19,13,13,15,30,25,20,20,21,16,20,11,20,13,12,23,15,20,19,19,15,11,14,25,20,17,10,22,19,23,14,21,15,19,18,16,21,14,20,16,16,16,22,18,27,25,17,17,19,16,13,23,18,19,17,29,13,15,19,24,15,18,19,14,16,14,15,15,11,17,17,14,19,13,15,17,15,20,14,17,10,11,13,21,22,15,14,26,29,19,11,22,15,17,23,21,21,18,21,27,22,20,14,15,11,29,21,11,13,14,16,19,19,21,21,21,26,33,10,22,12,13,15,24,15,14,19,18,27,24,17,21,14,19,17,16,12,19,19,16,17,20,25,22,23,19,22,20,13,15,11,17,15,10,27,17,22,16,29,15,20,22,10,15,17,14,20,14,15,13,12,13,11,9,28,15,13,17,22,22,13,17,12,22,17,19,22,14,21,23,16,16,19,24,20,21,15,24,21,14,20,22,16,13,22,13,19,19,18,18,14,12,15,13,20,21,12,16,12,20,21,23,16,14,21,19,14,14,21,27,23,22,17,17,15,15,17,20,11,13,12,18,11,21,17,21,19,19,19,23,16,14,14,20,33,17,17,20,20,12,13,27,20,19,16,24,15,17,15,17,13,19,26,9,22,17,20,18,18,20,19,17,8,20,22,20,13,22,12,15,10,20,17,18,13,18,15,15,14,19,18,19,16,16,22,17,13,19,25,17,21,18,15,16,19,19,15,16,19,10,25,17,23,16,17,12,16,17,18,16,13,17,13,23,17,22,17,22,18,13,14,17,22,23,18,25,14,14,15,15,15,19,14,24,9,20,20,15,12,16,19,14,15,10,16,20,17,18,17,9,28,18,21,16,23,19,18,16,8,18,15,21,20,15,19,25,13,28,17,18,19,22,9,12,21,16,16,14,17,26,15,18,27,19,21,15,21,13,13,19,16,23,24,18,19,14,17,19,19,24,15,13,18,20,17,23,18,32,20,18,22,23,21,12,17,11,20,12,16,24,24,9,19,23,23,21,18,13,22,23,14,17,9,20,26,16,16,19,23,12,18,26,7,16,30,15,12,21,26,16,19,20,17,18,16,15,17,15,23,12,18,16,15,16,18,15,15,24,18,19,26,19,13,17,29,14,17,12,20,23,13,13,19,22,14,20,17,16,13,19,18,14,17,26,18,12,23,10,20,21,21,18,21,21,23,16,11,24,19,13,13,12,16,16,10,19,15,34,23,22,12,18,20,21,21,13,18,18,15,16,22,17,18,12,22,20,13,22,13,18,26,14,22,24,15,20,12,15,17,19,15,14,23,25,19,20,21,22,21,15,16,15,14,19,23,23,12,16,20,10,11,12,17,14,14,19,20,21,15,19,20,27,16,20,26,23,11,17,23,22,16,15,16,10,21,17,19,26,21,18,15,13,21,11,18,11,21,17,14,18,20,33,15,17,16,17,15,22,22,21,18,20,15,22,20,23,17,16,17,18,21,17,13,13,14,13,19,24,18,14,11,12,28,13,18,20,16,19,16,12,18,12,15,17,19,23,22,17,15,17,25,11,19,19,19,15,21,14,12,20,12,18,19,18,14,17,16,24,19,18,26,20,10,16,21,13,14,12,12,30,14,25,19],"overdue":[99,163,1989,700,1265,396,558,197,51,1043,1721,15,849,1044,461,14,233,616,102,508,11,889,5440,3124,2242,1733,77,1187,994,779,2757,315,1788,739,43,2194,618,384,1051,3242,493,277,133,550,1234,796,1292,185,289,784,2376,262,1735,1728,296,1049,426,1882,1762,2017,2519,4289,786,789,1207,407,1301,117,1173,25,1755,3706,237,1333,1427,1693,1208,95,680,42,626,376,1317,387,2047,1451,1088,158,835,44,992,2056,160,730,2115,1058,5488,1136,344,204,1002,665,392,1252,1518,84,149,177,1271,250,106,184,31,283,191,710,3018,86,876,653,438,624,101,12,625,314,3341,3956,409,1410,795,1483,1376,192,669,336,23,1941,3715,1800,3,1224,3921,1313,3041,1785,1686,571,764,1307,636,501,632,552,1699,1411,2,1391,141,2798,16,1328,651,1449,836,583,1162,238,3736,2148,221,714,2469,485,33,260,866,1413,39,359,155,1936,140,411,587,240,963,228,1073,2189,580,1927,28,4110,586,1014,568,195,40,26,79,3477,1422,4819,466,572,846,695,537,241,1988,362,1701,1835,175,2571,304,1564,2760,124,328,850,434,130,2325,3226,148,971,2582,1751,70,56,1440,369,2779,128,166,348,73,154,2945,690,1540,182,607,32,1862,1159,513,4285,1134,472,1632,171,85,200,2445,45,62,2879,526,263,2409,1682,1272,500,2429,60,20,596,1103,701,1100,3271,213,68,459,1717,747,1467,1981,287,118,591,978,504,19,891,794,773,777,1696,286,193,74,1236,1261,1004,940,150,136,295,1744,5608,938,109,1494,1063,517,76,71,1977,725,961,97,385,703,2157,332,230,365,1446,279,884,1296,2177,1615,2716,356,1089,367,563,952,206,1052,72,375,147,933,993,880,1412,911,1648,534,682,243,2830,91,505,298,1029,341,3874,1826,2134,13,38,196,2821,1308,1121,1057,1219,1006,615,1003,2411,1714,1910,810,477,361,481,201,509,807,3020,1125,272,137,717,2160,203,1106,581,761,1348,486,276,2186,59,715,1060,5876,167,129,4131,457,655,2169,1078,162,225,1914,953,41,2769,1883,2334,93,249,1343,27,1442,2521,181,3537,689,3166,1624,432,525,666,212,1833,2034,2547,3857,640,176,7,265,1030,37,803,264,1485,1681,358,53,122,3918,469,1870,465,52,1055,731,2221,657,1215,1817,931,1780,310,351,3351,271,1168,2321,2155,350,1071,2868,261,266,207,94,446,1183,378,218,754,205,280,223,189,1109,63,183,638,398,691,3452,110,521,888,950,2981,2050,306,1240,1267,1649,597,174,1188,4349,10,1079,1791,337,352,441,4503,3774,5,114,718,2510,1955,855,3929,1131,208,64,290,121,323,3203,470,1820,1247,47,921,4699,49,224,3151,423,2596,1460,1609,333,301,2723,67,255,36,898,232,4,980,947,456,544,297,355,1417,275,1522,979,139,325,245,1311,3170,330,227,1034,684,2196,498,1656,867,1210,871,331,5403,1228,619,418,1510,756,2180,1727,1040,339,1111,57,819,231,649,2881,1880,847,518,868,433,549,416,529,814,531,688,515,253,909,1481,1276,1970,29,561,80,593,661,900,608,1266,474,405,3734,1209,1320,55,187,753,1275,1239,1582,771,349,135,3772,422,2697,759,697,1884,560,491,2530,3485,1541,303,2382,436,270,600,22,3262,1885,2360,783,1479,138,841,113,902,1915,2431,229,92,1652,629,969,268,774,82,373,104,46,990,317,1996,678,2346,1193,809,460,1421,340,3708,322,1226,273,226,1189,954,372,1407,357,98,115,922,473,686,480,144,1223,186,923,202,210,131,1130,318,21,2285,420,161,458,2328,1064,345,1548,845,388,2337,1045,172,827,2535,170,467,790,403,1370,1445,1211,3320,4092,370,3308,468,445,1912,1379,443,3345,928,386,120,425,83,564,482,1085,1877,1283,1123,66,1997,142,1263,853,893,673,2479,165,87,2218,988,566,512,1070,533,812,3402,663,108,2816,874,156,1490,490,107,832,3787,1724,126,475,364,334,577,324,1765,1645,18,285,54,3462,383,741,428,437,417,3675,3855,612,451,1294,484,528,1244,442,401,1998,2913,742,371,559,1650,858,989,413,300,61,48,1,2875,194,3962,278,585,284,1082,1368,427,2872,308,424,256,1273,802,1321,103,35,292,1033,548,2902,1773,569,918,4405,681,575,366,2806,81,199,523,1934,723,1274,1462,338,157,2153,2444,1783,3030,24,1012,2657,2166,246,311,321,2103,1077,153,402,9,1245,1000,3289,694,1054,1262,698,752,353,968,4750,820,450,116,453,1061,503,744,164,1636,1581,576,363,258,3566,431,390,242,143,414,152,641,492,664,3204,2059,2495,711,765,1618,127,1443,1558,746,502,539,281,34,2058,1521,598,540,105,211,1398,96,1031,506,463,1531,1720,890,119,985,611,1512,984,1384,1507,219,2028,89,1763,3404,942,180,639,320,857,236,299,151,674,1327,288,920,986,769,179,1534,1679,852,5309,2845,78,751,1900,100,65,1455,659,476,1695,2094,1799,1010,6,1389,412,159,2631,1096,145,716,377,8,728,1128,720,1976,1257,30,631,1147,447,462,483,1617,1214,1387,198,982,760,168],"digit_freq":{"0":5285,"1":5529,"2":5347,"3":5242,"4":5428,"5":5292,"6":5256,"7":5297,"8":5396,"9":5277}},"MID":{"label":"Midday","total_draws":8872,"date_start":"2001-11-12","date_end":"2026-03-22","fireball_draws":3291,"combo_freq":[10,7,9,10,11,9,10,8,8,8,10,7,7,12,15,9,9,5,10,8,6,14,6,8,8,9,10,13,13,13,7,14,14,10,12,6,9,13,5,4,8,13,10,8,7,4,13,7,5,12,11,12,6,14,4,4,6,16,8,13,4,14,7,12,7,13,10,11,8,6,21,12,10,8,13,11,13,9,12,9,9,8,6,9,7,8,7,10,7,10,6,12,14,9,9,8,7,6,11,8,8,15,9,7,4,8,8,10,5,7,8,11,7,9,8,8,6,8,10,10,10,13,9,4,11,3,8,12,5,13,8,8,11,10,16,13,8,10,10,8,7,8,9,7,11,6,11,10,8,7,17,7,9,12,7,13,6,12,11,13,10,11,8,10,13,11,5,4,7,10,12,10,7,8,8,5,12,9,12,9,8,5,17,8,9,9,8,14,10,15,2,11,10,5,4,9,10,7,8,7,10,9,5,17,8,14,8,6,8,7,7,10,4,11,13,6,7,7,9,6,10,14,7,9,6,12,12,13,15,12,11,5,7,12,11,9,8,9,10,9,7,7,6,16,7,10,8,10,5,6,11,8,8,9,7,9,5,7,8,13,10,6,11,9,7,9,9,5,9,12,11,6,10,11,12,9,7,14,8,6,6,10,14,8,10,8,3,8,18,11,8,8,11,1,9,4,10,6,7,7,10,7,7,13,10,14,9,12,10,13,6,12,8,7,6,10,6,16,6,12,11,7,8,9,7,9,5,15,3,6,5,10,9,10,9,7,10,9,9,11,9,9,14,4,6,8,6,11,9,13,11,7,7,10,10,10,8,9,10,5,7,5,8,7,10,7,7,9,10,13,3,10,13,7,7,4,9,10,9,13,5,5,6,4,9,4,12,10,10,7,3,8,7,3,7,8,14,7,11,14,9,4,10,10,11,7,7,10,8,6,13,4,7,7,10,7,12,9,5,9,6,5,8,9,7,10,7,9,10,8,7,9,11,9,10,12,11,8,9,12,12,13,9,8,8,7,11,11,6,7,9,10,6,10,15,4,10,6,11,7,16,15,12,15,6,5,10,4,14,7,11,20,11,5,7,9,9,6,9,9,8,11,6,9,9,6,8,10,15,4,12,8,8,12,9,6,8,6,8,9,11,8,8,8,6,8,8,7,5,7,8,3,9,11,11,12,8,5,11,2,9,8,6,7,7,6,8,9,5,9,9,13,5,7,7,11,9,9,6,7,5,5,10,6,9,9,10,8,10,3,11,9,6,12,11,15,13,5,8,10,8,5,10,2,12,13,12,11,17,13,6,12,10,13,5,8,8,6,7,9,9,7,5,12,9,9,8,11,10,11,7,4,6,12,9,10,11,9,7,13,7,12,7,10,8,9,7,12,7,9,7,12,11,10,14,4,8,9,7,2,7,11,7,9,9,9,8,5,8,11,2,9,8,8,7,11,1,7,4,3,8,6,11,10,15,9,13,13,13,24,15,8,9,7,6,10,7,10,7,10,11,6,7,8,11,13,6,6,4,6,2,8,6,3,16,4,5,6,11,9,6,5,6,6,12,8,3,7,10,10,7,9,7,10,11,11,8,8,15,5,12,14,10,7,8,7,11,5,11,11,7,7,7,10,13,8,8,7,5,9,15,7,6,6,10,15,14,8,14,8,11,7,9,8,14,10,8,7,6,9,13,10,4,7,10,10,7,8,9,4,12,11,11,13,13,6,12,8,10,9,14,7,13,5,6,6,10,10,9,7,12,11,10,9,8,8,6,8,7,7,16,5,5,9,7,10,11,6,9,10,8,3,8,15,7,11,6,4,7,8,12,5,7,7,6,11,4,12,13,6,7,7,10,7,9,5,9,12,6,12,7,9,4,9,10,7,7,11,11,12,10,15,9,13,6,8,10,7,7,10,7,12,12,8,3,7,11,7,20,11,10,6,10,12,9,11,10,11,6,7,7,6,7,10,8,8,4,15,8,15,10,6,6,9,10,7,7,13,10,8,11,12,5,5,4,10,6,11,10,13,7,6,12,12,9,5,7,4,6,9,7,10,11,10,5,6,8,11,15,5,13,8,11,7,10,7,9,9,5,10,14,11,3,5,11,15,6,10,10,10,6,7,6,9,11,10,10,8,5,6,13,10,13,10,9,9,12,9,6,12,10,10,14,10,10,14,5,11,8,10,7,11,7,13,7,12,10,9,7,9,8,7,15,9,12,8,10,6,7,7,8,6,9,12,2,11,13,10,6,9,8,10,8,9,10,10,6,15,9,16],"overdue":[145,2123,1828,1119,277,1147,219,339,350,147,899,1079,446,516,263,233,176,1295,797,2586,10,213,2032,8,2127,1336,953,157,497,236,3284,2300,102,527,129,1789,609,1648,2052,3293,38,190,3535,571,2050,4692,392,1357,2019,1148,1652,201,273,1759,16,1549,538,159,489,1465,1056,140,558,1522,372,2107,124,1790,432,115,208,50,1177,1214,1054,313,998,5,550,966,1728,1111,440,1880,78,71,854,803,304,1536,3372,369,80,198,858,288,296,490,718,1329,4327,560,991,2558,4265,765,1139,1292,2367,1476,1200,804,781,1358,498,166,1351,368,618,705,714,168,601,2122,962,2448,121,1334,2777,747,332,457,611,1113,1193,579,2328,1479,591,1013,1625,72,666,1289,340,12,36,242,798,559,217,1074,136,467,528,188,1073,371,636,2684,77,1064,802,1302,623,451,353,1556,1150,1921,370,454,2687,653,1384,3031,75,341,256,522,969,1459,2437,413,1062,464,557,774,890,287,2805,177,181,2412,2766,1163,1251,937,400,1255,950,1727,2222,3641,2154,897,1122,42,996,430,580,113,4462,1023,407,179,1368,3055,553,265,264,223,672,1389,103,199,20,483,62,473,105,3684,56,301,583,195,610,334,55,1425,874,1307,146,472,649,551,1101,568,1612,1804,53,2424,529,650,1110,2228,1167,916,915,346,503,1469,194,496,257,878,316,780,594,259,958,1171,1045,2760,111,949,1523,300,484,856,143,292,655,1835,1628,1412,833,749,694,713,2090,1114,1277,8794,164,6475,439,271,415,1610,87,1816,1748,202,27,246,531,863,127,197,891,314,4432,2584,235,258,2985,252,811,243,946,685,331,674,1631,399,180,91,2194,61,1797,40,2817,416,575,2504,286,1158,322,728,751,1540,134,2605,1686,227,1602,512,391,640,459,175,1129,59,1052,82,93,1890,315,691,428,1186,1531,2065,2251,820,951,325,699,849,689,1118,69,34,1247,4990,840,637,1930,968,279,3923,1020,4356,807,2649,155,321,1699,281,95,2161,1273,3722,1644,424,49,308,32,46,404,883,419,218,178,96,24,13,406,1819,44,461,160,1416,1253,1249,320,385,1429,60,51,1919,342,1508,363,1162,1972,119,1068,458,317,19,796,1845,2002,137,769,153,534,1554,31,479,702,15,7,2478,735,1228,4153,1184,2996,431,126,865,106,270,846,302,329,1689,247,902,545,68,1446,1436,2299,511,664,502,482,783,628,2,614,450,753,2619,748,205,2551,222,1958,232,1643,1514,330,226,48,2343,184,734,3521,362,1006,554,552,979,758,2288,841,1207,149,1988,3321,546,738,393,5364,323,186,25,1208,1138,104,536,1581,756,390,4722,2257,209,245,2055,1009,1487,616,196,1231,1756,1049,790,3396,1313,622,401,752,959,298,572,92,1659,523,97,187,676,361,2176,898,2391,1043,1882,2452,294,324,26,466,357,1766,239,766,495,2166,3050,41,117,1261,931,94,1462,2445,125,1781,397,960,1594,1366,816,1,47,1061,2601,2000,39,1153,746,328,515,2136,65,337,1209,1230,476,964,973,352,189,509,631,2058,402,772,338,238,1065,1767,138,2314,169,632,374,1539,2881,687,120,433,880,1285,8062,972,293,2521,2232,1562,85,485,2416,932,131,3709,384,1434,1244,360,114,3636,919,5755,2285,22,633,303,1349,644,708,167,597,37,297,43,2287,954,894,1430,425,447,408,1103,280,1423,1722,1912,33,999,777,2772,2086,3100,533,5465,148,767,3477,70,2145,596,2042,306,1323,2561,1801,501,90,52,285,3,1376,1303,491,262,30,1306,255,793,267,64,1653,448,590,14,345,1088,1395,944,4908,215,3330,156,520,3433,947,2633,589,449,373,5200,576,896,1102,1198,1281,521,4929,1021,364,17,1372,794,1194,2212,349,1421,910,1091,1305,380,35,452,460,1850,989,4438,855,216,110,918,409,480,63,1335,161,514,290,144,851,1012,118,592,74,309,376,839,629,2015,1974,3754,1000,394,697,437,165,89,130,1438,283,792,260,133,29,1743,1603,2406,719,1751,152,1095,540,211,3168,1719,2051,929,906,2060,1157,510,333,84,266,9,471,1025,230,28,838,1526,1019,867,1031,607,366,2094,436,3632,886,887,1677,2544,1175,1852,203,567,150,1640,507,11,88,1030,359,876,722,2038,395,942,1709,429,2570,2395,825,504,845,2158,535,6431,703,2668,829,974,54,1280,1022,824,291,725,45,668,212,108,1498,128,1991,2863,1238,6,81,2302,563,848,646,411,269,1574,171,1036,815,3586,244,83,1948,23,58,1861,141,1354,532,200,123,442,909,724,1237,569,593,1299,506,173,1573,1188,172,2974,2236,658,67,2934,132,789,561,139,162,444,1283,1002,2231,1477,2180,493,1415,2593,282,1692,927,988,434,18,86,823,4,1279,182,99,468,2071,1239,726,225,2470,375,492,1493,595,443,1027,671,2279,873,701,154,463,1779,1422,420,1059,382,1291,272,158,1387,764,76,1310,405,995,289,786,1807,1326,73,2274,1630,185,1990,987,1298,112,1015,757,1507,1596,1419,278,307,79,66,3438,253,57,627,547,229,21,494,135,817,621,305,850,936,412,913],"digit_freq":{"0":2722,"1":2641,"2":2647,"3":2637,"4":2707,"5":2674,"6":2592,"7":2695,"8":2626,"9":2675}},"BOTH":{"label":"Combined","total_draws":26655,"date_start":"1975-05-22","date_end":"2026-03-22","fireball_draws":6581,"combo_freq":[27,28,25,31,22,34,21,27,41,23,26,23,21,31,35,26,20,18,29,26,21,32,20,32,22,26,32,30,33,29,17,33,26,28,31,19,36,30,24,18,28,36,27,29,20,12,31,20,23,33,24,31,21,29,24,26,24,35,25,28,19,22,23,27,28,35,26,34,26,23,35,21,32,26,40,33,31,25,32,25,24,36,18,27,19,27,26,22,25,28,29,21,35,27,28,28,15,29,32,31,23,43,30,18,18,28,28,23,20,25,26,29,22,30,35,37,20,31,24,33,23,31,28,30,26,29,30,22,25,33,23,26,28,27,33,36,26,28,18,26,27,32,24,25,33,24,33,30,26,19,31,31,24,31,30,29,16,26,24,26,34,27,17,25,35,30,25,20,22,32,25,31,18,25,20,25,30,23,28,23,30,23,34,20,23,30,26,29,31,29,14,25,31,13,26,27,28,31,28,30,28,25,22,34,22,29,24,24,28,24,23,39,21,21,32,16,24,17,28,35,36,37,29,18,22,29,25,34,37,31,28,23,18,28,27,26,30,22,27,37,25,27,15,33,27,23,26,25,27,16,30,30,19,34,25,32,21,31,28,27,30,19,26,28,27,35,19,20,28,33,38,27,28,23,37,29,28,35,24,23,23,31,37,25,22,24,20,27,31,24,23,38,36,21,29,25,26,26,18,27,23,19,30,28,30,33,28,27,21,27,31,32,25,17,28,29,29,30,27,27,30,25,24,30,21,29,21,31,19,28,23,37,34,27,26,26,26,22,32,29,28,26,43,17,21,27,30,26,27,32,25,23,21,25,25,21,25,26,24,24,20,20,25,22,30,21,24,19,21,26,24,32,28,21,33,33,28,21,31,28,22,28,27,25,27,25,39,32,30,21,18,19,36,24,18,21,28,23,30,33,30,25,31,36,44,17,29,22,21,21,37,19,21,26,28,34,36,26,26,23,25,22,24,21,26,29,23,26,30,33,29,32,30,31,30,25,26,19,26,27,22,40,26,30,24,36,26,31,28,17,24,27,20,30,29,19,23,18,24,18,25,43,27,28,23,27,32,17,31,19,33,37,30,27,21,30,32,22,25,28,32,31,27,24,33,27,22,30,37,20,25,30,21,31,28,24,26,20,20,24,24,28,29,20,22,20,28,28,28,23,22,24,28,25,25,33,35,28,33,19,26,23,21,24,27,17,21,21,23,20,30,30,26,26,26,30,32,25,20,21,25,38,27,23,29,29,22,21,37,23,30,25,30,27,28,30,30,18,27,36,17,27,27,22,30,31,32,30,34,21,26,34,30,26,27,20,23,16,27,26,27,20,23,27,24,23,27,29,29,27,23,26,23,25,28,35,28,30,25,28,23,31,26,25,24,28,17,37,24,32,23,29,23,26,31,22,24,22,24,15,30,28,29,26,31,27,21,19,25,33,25,27,33,22,21,26,16,22,23,17,32,15,31,30,30,21,29,32,27,39,25,24,29,24,24,27,16,38,25,31,27,29,26,26,27,21,24,21,25,26,17,27,31,16,44,21,23,25,33,18,18,26,22,22,26,25,29,22,28,37,26,30,22,31,24,24,27,24,38,29,30,33,24,24,27,26,35,20,24,29,27,24,30,28,45,28,26,29,28,30,27,24,17,26,22,31,38,32,23,27,34,30,30,26,27,32,31,21,23,18,33,36,20,23,29,33,19,26,35,11,28,41,26,25,34,32,28,27,30,26,32,23,28,22,21,29,22,28,25,22,28,29,25,24,32,26,25,34,26,20,33,34,19,26,19,30,34,19,22,29,30,17,28,32,23,24,25,22,21,25,38,23,19,30,16,31,25,33,31,27,28,30,26,18,33,24,22,25,18,28,23,19,23,24,44,30,29,23,29,32,31,36,22,31,24,23,26,29,24,28,19,34,32,21,25,20,29,33,34,33,34,21,30,24,24,28,29,26,20,30,32,25,27,31,30,29,19,31,23,29,29,29,29,21,26,27,17,24,22,25,25,26,24,25,25,25,25,31,37,29,27,32,35,23,26,28,29,20,21,25,17,31,28,29,31,27,26,26,28,26,24,26,22,28,27,21,27,29,38,25,31,27,20,20,33,37,27,28,30,25,28,27,29,26,27,27,28,29,22,19,26,24,26,29,33,27,26,20,18,40,23,28,34,26,29,30,17,29,20,25,24,30,30,35,24,27,27,34,18,28,27,26,30,30,26,20,30,18,25,26,26,20,26,28,26,30,31,36,26,19,24,31,21,23,22,22,36,29,34,35],"overdue":[99,163,1989,700,1265,396,558,197,51,1043,1721,15,849,1044,461,14,233,616,102,508,11,889,5440,3124,2242,1733,77,1187,994,779,2757,315,1788,739,43,2194,618,384,1051,3242,493,277,133,550,1234,796,1292,185,289,784,2376,262,1735,1728,296,1049,426,1882,1762,2017,2519,4289,786,789,1207,407,1301,117,1173,25,1755,3706,237,1333,1427,1693,1208,95,680,42,626,376,1317,387,2047,1451,1088,158,835,44,992,2056,160,730,2115,1058,5488,1136,344,204,1002,665,392,1252,1518,84,149,177,1271,250,106,184,31,283,191,710,3018,86,876,653,438,624,101,12,625,314,3341,3956,409,1410,795,1483,1376,192,669,336,23,1941,3715,1800,3,1224,3921,1313,3041,1785,1686,571,764,1307,636,501,632,552,1699,1411,2,1391,141,2798,16,1328,651,1449,836,583,1162,238,3736,2148,221,714,2469,485,33,260,866,1413,39,359,155,1936,140,411,587,240,963,228,1073,2189,580,1927,28,4110,586,1014,568,195,40,26,79,3477,1422,4819,466,572,846,695,537,241,1988,362,1701,1835,175,2571,304,1564,2760,124,328,850,434,130,2325,3226,148,971,2582,1751,70,56,1440,369,2779,128,166,348,73,154,2945,690,1540,182,607,32,1862,1159,513,4285,1134,472,1632,171,85,200,2445,45,62,2879,526,263,2409,1682,1272,500,2429,60,20,596,1103,701,1100,3271,213,68,459,1717,747,1467,1981,287,118,591,978,504,19,891,794,773,777,1696,286,193,74,1236,1261,1004,940,150,136,295,1744,5608,938,109,1494,1063,517,76,71,1977,725,961,97,385,703,2157,332,230,365,1446,279,884,1296,2177,1615,2716,356,1089,367,563,952,206,1052,72,375,147,933,993,880,1412,911,1648,534,682,243,2830,91,505,298,1029,341,3874,1826,2134,13,38,196,2821,1308,1121,1057,1219,1006,615,1003,2411,1714,1910,810,477,361,481,201,509,807,3020,1125,272,137,717,2160,203,1106,581,761,1348,486,276,2186,59,715,1060,5876,167,129,4131,457,655,2169,1078,162,225,1914,953,41,2769,1883,2334,93,249,1343,27,1442,2521,181,3537,689,3166,1624,432,525,666,212,1833,2034,2547,3857,640,176,7,265,1030,37,803,264,1485,1681,358,53,122,3918,469,1870,465,52,1055,731,2221,657,1215,1817,931,1780,310,351,3351,271,1168,2321,2155,350,1071,2868,261,266,207,94,446,1183,378,218,754,205,280,223,189,1109,63,183,638,398,691,3452,110,521,888,950,2981,2050,306,1240,1267,1649,597,174,1188,4349,10,1079,1791,337,352,441,4503,3774,5,114,718,2510,1955,855,3929,1131,208,64,290,121,323,3203,470,1820,1247,47,921,4699,49,224,3151,423,2596,1460,1609,333,301,2723,67,255,36,898,232,4,980,947,456,544,297,355,1417,275,1522,979,139,325,245,1311,3170,330,227,1034,684,2196,498,1656,867,1210,871,331,5403,1228,619,418,1510,756,2180,1727,1040,339,1111,57,819,231,649,2881,1880,847,518,868,433,549,416,529,814,531,688,515,253,909,1481,1276,1970,29,561,80,593,661,900,608,1266,474,405,3734,1209,1320,55,187,753,1275,1239,1582,771,349,135,3772,422,2697,759,697,1884,560,491,2530,3485,1541,303,2382,436,270,600,22,3262,1885,2360,783,1479,138,841,113,902,1915,2431,229,92,1652,629,969,268,774,82,373,104,46,990,317,1996,678,2346,1193,809,460,1421,340,3708,322,1226,273,226,1189,954,372,1407,357,98,115,922,473,686,480,144,1223,186,923,202,210,131,1130,318,21,2285,420,161,458,2328,1064,345,1548,845,388,2337,1045,172,827,2535,170,467,790,403,1370,1445,1211,3320,4092,370,3308,468,445,1912,1379,443,3345,928,386,120,425,83,564,482,1085,1877,1283,1123,66,1997,142,1263,853,893,673,2479,165,87,2218,988,566,512,1070,533,812,3402,663,108,2816,874,156,1490,490,107,832,3787,1724,126,475,364,334,577,324,1765,1645,18,285,54,3462,383,741,428,437,417,3675,3855,612,451,1294,484,528,1244,442,401,1998,2913,742,371,559,1650,858,989,413,300,61,48,1,2875,194,3962,278,585,284,1082,1368,427,2872,308,424,256,1273,802,1321,103,35,292,1033,548,2902,1773,569,918,4405,681,575,366,2806,81,199,523,1934,723,1274,1462,338,157,2153,2444,1783,3030,24,1012,2657,2166,246,311,321,2103,1077,153,402,9,1245,1000,3289,694,1054,1262,698,752,353,968,4750,820,450,116,453,1061,503,744,164,1636,1581,576,363,258,3566,431,390,242,143,414,152,641,492,664,3204,2059,2495,711,765,1618,127,1443,1558,746,502,539,281,34,2058,1521,598,540,105,211,1398,96,1031,506,463,1531,1720,890,119,985,611,1512,984,1384,1507,219,2028,89,1763,3404,942,180,639,320,857,236,299,151,674,1327,288,920,986,769,179,1534,1679,852,5309,2845,78,751,1900,100,65,1455,659,476,1695,2094,1799,1010,6,1389,412,159,2631,1096,145,716,377,8,728,1128,720,1976,1257,30,631,1147,447,462,483,1617,1214,1387,198,982,760,168],"digit_freq":{"0":8007,"1":8170,"2":7994,"3":7879,"4":8135,"5":7966,"6":7848,"7":7992,"8":8022,"9":7952}}}};
+const LUCKY = new Set(['777','111','222','333','444','555','666','888','999','000','123','321','456','654','789','987','369','147','258','007','911']);
+const UGLY_EXAMPLES = new Set(['068','379','593','847','936','192','384','573']);
+const DIGIT_WEIGHTS = [2.25,2.05,1.9,1.55,1.0,0.92,0.78,0.72,0.72,0.82]
+;
+const AGENT_OPTIONS = [100,1000,10000,100000,1000000];
+const STORAGE_KEY = 'nj_pick3_manual_updates_v1';
+const state = {
+  currentTab:'eve',
+  results:{ eve:null, mid:null, both:null },
+  loggedPlays:[],
+  winningDraws:[],
+  manualOfficialUpdates: loadManualUpdates()
+};
+
+function loadManualUpdates() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+function saveManualUpdates() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.manualOfficialUpdates)); } catch (e) {}
+}
+
+function setUpdateStatus(msg, kind='ok') {
+  const el = document.getElementById('updStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'small ' + (kind==='error' ? 'danger' : 'good');
+}
+
+function combos() { return Array.from({length:1000}, (_,i)=> String(i).padStart(3,'0')); }
+function datasetFor(key) { return ENGINE_DATA.datasets[key==='eve'?'EVE':key==='mid'?'MID':'BOTH']; }
+function fmt(n) { return Number(n).toLocaleString(); }
+function isUnique(c) { return new Set(c.split('')).size===3; }
+function isDouble(c) { return new Set(c.split('')).size===2; }
+function isTriple(c) { return new Set(c.split('')).size===1; }
+function hasOnlyHigh(c) { return c.split('').every(d => Number(d) >= 7); }
+function highCount(c) { return c.split('').filter(d => Number(d) >= 6).length; }
+function lowCount(c) { return c.split('').filter(d => Number(d) <= 3).length; }
+function ascendingOrDescending(c) {
+  const a=c.split('').map(Number);
+  return (a[1]===a[0]+1 && a[2]===a[1]+1) || (a[1]===a[0]-1 && a[2]===a[1]-1);
+}
+function crossesRanges(c) {
+  const buckets = new Set(c.split('').map(d => Number(d)<=3 ? 'L' : Number(d)<=6 ? 'M' : 'H'));
+  return buckets.size >= 3;
+}
+function normalize(values) {
+  const min = Math.min(...values), max = Math.max(...values);
+  return values.map(v => max===min ? 0 : (v-min)/(max-min));
+}
+function humanWeight(combo) {
+  const d = combo.split('').map(Number);
+  let w = DIGIT_WEIGHTS[d[0]] * DIGIT_WEIGHTS[d[1]] * DIGIT_WEIGHTS[d[2]];
+  const reasons = [];
+  if (LUCKY.has(combo)) { w *= 6.5; reasons.push('lucky/pattern combo'); }
+  if (ascendingOrDescending(combo)) { w *= 2.4; reasons.push('easy sequence'); }
+  if (isTriple(combo)) { w *= 2.1; reasons.push('triple is memorable'); }
+  if (isDouble(combo) && lowCount(combo) >= 2) { w *= 1.4; reasons.push('birthday-style double'); }
+  if (combo.startsWith('0')) { w *= 0.86; reasons.push('leading zero hurts recall'); }
+  if (UGLY_EXAMPLES.has(combo)) { w *= 0.5; reasons.push('psychologically ugly'); }
+  if (crossesRanges(combo) && isUnique(combo)) { w *= 0.62; reasons.push('cross-range unique'); }
+  if (highCount(combo) === 3) { w *= 0.28; reasons.push('all-high digits underplayed'); }
+  if (hasOnlyHigh(combo)) { w *= 0.5; reasons.push('no birth-date feel'); }
+  if (isUnique(combo) && !ascendingOrDescending(combo) && !LUCKY.has(combo) && highCount(combo)>=2) { w *= 0.78; reasons.push('hard to remember'); }
+  return { weight:w, reasons };
+}
+
+function estimatePlayerCounts(agentCount) {
+  const all = combos();
+  const weights = all.map(c => humanWeight(c).weight);
+  const totalWeight = weights.reduce((a,b)=>a+b,0);
+  const expected = weights.map(w => (w/totalWeight) * agentCount);
+  const floors = expected.map(Math.floor);
+  let remaining = agentCount - floors.reduce((a,b)=>a+b,0);
+  const remainders = expected.map((v,i)=>[i, v - floors[i]]).sort((a,b)=>b[1]-a[1]);
+  for (let i=0;i<remaining;i++) floors[remainders[i][0]] += 1;
+  return floors;
+}
+
+function manualUpdatesFor(tabKey) {
+  if (tabKey === 'eve') return state.manualOfficialUpdates.filter(x => x.draw === 'EVE');
+  if (tabKey === 'mid') return state.manualOfficialUpdates.filter(x => x.draw === 'MID');
+  return state.manualOfficialUpdates;
+}
+
+function exclusionUpdates() {
+  return state.manualOfficialUpdates;
+}
+
+function applyManualUpdates(rawGhost, tabKey) {
+  const updates = exclusionUpdates();
+  updates.forEach(u => {
+    const idx = Number(u.combo);
+    const row = rawGhost[idx];
+    if (!row) return;
+    row.histFreq += 1;
+    row.overdue = 0;
+    row.manualHit = true;
+    row.recentHit = true;
+  });
+}
+
+function runEngine(tabKey) {
+  const ds = datasetFor(tabKey);
+  const agentCount = Number(document.getElementById(tabKey+'-agents').value);
+  const mode = document.getElementById(tabKey+'-mode').value;
+  const counts = estimatePlayerCounts(agentCount);
+  const freqArr = ds.combo_freq;
+  const overdueArr = ds.overdue;
+  const totalDraws = ds.total_draws + exclusionUpdates().length;
+  const expectedComboFreq = totalDraws / 1000;
+  const rawGhost = counts.map((pc, idx) => {
+    const combo = String(idx).padStart(3,'0');
+    const histFreq = freqArr[idx] || 0;
+    const overdue = overdueArr[idx] || (totalDraws+1);
+    const hw = humanWeight(combo);
+    return { combo, estPlayers:pc, histFreq, overdue, reasons:hw.reasons, unique:isUnique(combo), double:isDouble(combo), triple:isTriple(combo) };
+  });
+  applyManualUpdates(rawGhost, tabKey);
+  rawGhost.sort((a,b)=> a.estPlayers-b.estPlayers || b.overdue-a.overdue || a.histFreq-b.histFreq);
+  const eligible = rawGhost.filter(r=>!r.recentHit);
+  const top25 = eligible.slice(0,25);
+
+  const playerVals = rawGhost.map(x=>x.estPlayers);
+  const overdueVals = rawGhost.map(x=>x.overdue);
+  const rarityVals = rawGhost.map(x=> expectedComboFreq - x.histFreq);
+  const pNorm = normalize(playerVals.map(v=>-v));
+  const oNorm = normalize(overdueVals);
+  const rNorm = normalize(rarityVals);
+  rawGhost.forEach((row, i)=>{
+    row.ghostScore = pNorm[i];
+    row.overdueScore = oNorm[i];
+    row.rarityScore = rNorm[i];
+    row.digitBonus = (row.combo.includes('3')?0.12:0) + (row.combo.includes('6')?0.10:0);
+    const repeatedBonus = row.double ? 0.05 : 0;
+    const uniqueCoverageBonus = row.unique ? 0.04 : 0;
+    if (mode==='uniqueness') row.valueScore = row.ghostScore*0.58 + row.overdueScore*0.18 + row.rarityScore*0.18 + row.digitBonus;
+    else if (mode==='return') row.valueScore = row.ghostScore*0.22 + row.overdueScore*0.35 + row.rarityScore*0.25 + row.digitBonus + repeatedBonus + uniqueCoverageBonus;
+    else row.valueScore = row.ghostScore*0.34 + row.overdueScore*0.31 + row.rarityScore*0.25 + row.digitBonus + repeatedBonus + uniqueCoverageBonus;
+  });
+
+  const overlap = eligible
+    .filter(r => r.overdue > Math.max(100, totalDraws/10) || r.histFreq < Math.max(1, expectedComboFreq*0.65))
+    .sort((a,b)=>b.valueScore-a.valueScore || a.estPlayers-b.estPlayers)
+    .slice(0,150);
+
+  const uniqueSection = overlap.filter(r=>r.unique).slice(0,15);
+  const repeatSection = overlap.filter(r=>r.double).slice(0,15);
+  const ranked100 = overlap.filter(r=>!r.triple).slice(0,100);
+
+  let planPool;
+  if (mode==='both') {
+    planPool = [...uniqueSection.slice(0,5), ...repeatSection.slice(0,5)].sort((a,b)=>b.valueScore-a.valueScore).slice(0,10);
+  } else {
+    planPool = overlap.filter(r=>!r.triple).slice(0,10);
+  }
+  while (planPool.length < 10) {
+    const next = eligible.filter(r=>!r.triple && !planPool.some(p=>p.combo===r.combo)).sort((a,b)=>b.valueScore-a.valueScore)[0];
+    if (!next) break;
+    planPool.push(next);
+  }
+  const plan = planPool.slice(0,10).map((r, idx)=>{
+    const withFireball = idx < 2;
+    const payout = payoutInfo(r.combo, withFireball);
+    return { ...r, playNo: idx+1, withFireball, cost: withFireball ? 2 : 1, payout };
+  });
+  state.results[tabKey] = { agentCount, mode, top25, overlap, ranked100, uniqueSection, repeatSection, plan, dataset:ds };
+  renderEngine(tabKey);
+}
+
+function payoutInfo(combo, withFireball) {
+  const repeated = isDouble(combo);
+  const baseExact = repeated ? 330 : 290;
+  const baseAny = repeated ? 80 : 40;
+  if (!withFireball) return { exact: baseExact, any: baseAny, note: 'Store-cashable' };
+  const fbExact = repeated ? 450 : 395;
+  const fbAny = repeated ? 110 : 55;
+  return { exact: fbExact, any: fbAny, note: 'Store-cashable' };
+}
+
+function engineSkeleton(tabKey, title, subtitle) {
+  return `
+    <div class="card" style="margin-bottom:16px;">
+      <div class="sectionTitle">${title}</div>
+      <div class="notice">${subtitle}</div>
+      <div class="controls" style="margin-top:14px;">
+        <label class="small">Agents (1 to 1,000,000)</label>
+        <input id="${tabKey}-agents" type="number" min="1" max="1000000" value="100000" step="1" style="width:140px;padding:10px 12px;font-size:14px;font-weight:700;border-radius:10px;background:var(--panel2);color:var(--text);border:1px solid var(--line);" />
+        <button type="button" style="padding:8px 11px;font-size:12px;font-weight:700;background:var(--panel2);color:var(--muted);border:1px solid var(--line);border-radius:8px;cursor:pointer;" onclick="document.getElementById('${tabKey}-agents').value=100;">100</button>
+        <button type="button" style="padding:8px 11px;font-size:12px;font-weight:700;background:var(--panel2);color:var(--muted);border:1px solid var(--line);border-radius:8px;cursor:pointer;" onclick="document.getElementById('${tabKey}-agents').value=1000;">1K</button>
+        <button type="button" style="padding:8px 11px;font-size:12px;font-weight:700;background:var(--panel2);color:var(--muted);border:1px solid var(--line);border-radius:8px;cursor:pointer;" onclick="document.getElementById('${tabKey}-agents').value=10000;">10K</button>
+        <button type="button" style="padding:8px 11px;font-size:12px;font-weight:700;background:var(--panel2);color:var(--muted);border:1px solid var(--line);border-radius:8px;cursor:pointer;" onclick="document.getElementById('${tabKey}-agents').value=100000;">100K</button>
+        <button type="button" style="padding:8px 11px;font-size:12px;font-weight:700;background:var(--panel2);color:var(--muted);border:1px solid var(--line);border-radius:8px;cursor:pointer;" onclick="document.getElementById('${tabKey}-agents').value=1000000;">1M</button>
+        <label class="small">Mode</label>
+        <select id="${tabKey}-mode">
+          <option value="return">Maximize return</option>
+          <option value="uniqueness">Maximize uniqueness</option>
+          <option value="both" selected>Show both</option>
+        </select>
+        <button class="primary" onclick="runEngine('${tabKey}')">Run engine</button>
+      </div>
+    </div>
+    <div id="${tabKey}-results"></div>
+  `;
+}
+
+function renderEngine(tabKey) {
+  const result = state.results[tabKey];
+  if (!result) return;
+  const ds = result.dataset;
+  const totalCost = result.plan.reduce((a,p)=>a+p.cost,0);
+  const summary = `
+    <div class="summary">
+      <div class="card"><div class="k">Draws loaded</div><div class="v">${fmt(ds.total_draws)}</div></div>
+      <div class="card"><div class="k">Coverage</div><div class="v">${ds.date_start}</div><div class="small">to ${ds.date_end}</div></div>
+      <div class="card"><div class="k">Fireball rows</div><div class="v">${fmt(ds.fireball_draws)}</div></div>
+      <div class="card"><div class="k">Mode</div><div class="v">${result.mode}</div></div>
+      <div class="card"><div class="k">Agents modeled</div><div class="v">${fmt(result.agentCount)}</div></div>
+      <div class="card"><div class="k">Manual updates</div><div class="v">${fmt(exclusionUpdates().length)}</div><div class="small">excluded in all 3 engines</div></div>
+    </div>`;
+
+  const top25Rows = result.top25.map((r, idx)=>`<tr>
+      <td>${idx+1}</td>
+      <td class="mono"><strong>${r.combo}</strong></td>
+      <td>${fmt(r.estPlayers)} / ${fmt(result.agentCount)}</td>
+      <td>${r.overdue}</td>
+      <td>${r.histFreq}</td>
+      <td><div class="badges">${r.unique?'<span class="badge b-green">unique</span>':''}${r.double?'<span class="badge b-purple">double</span>':''}${r.combo.includes('3')?'<span class="badge b-gold">digit 3</span>':''}${r.combo.includes('6')?'<span class="badge b-gold">digit 6</span>':''}</div></td>
+      <td>${r.reasons.join(', ') || 'low crowd appeal'}${r.manualHit?' · recent manual hit':''}</td>
+    </tr>`).join('');
+
+  const overlapRows = rows => rows.map((r, idx)=>`<tr>
+      <td>${idx+1}</td>
+      <td class="mono"><strong>${r.combo}</strong></td>
+      <td>${r.valueScore.toFixed(3)}</td>
+      <td>${fmt(r.estPlayers)}</td>
+      <td>${r.overdue}</td>
+      <td>${r.histFreq}</td>
+      <td><div class="badges">${r.combo.includes('3')?'<span class="badge b-gold">3</span>':''}${r.combo.includes('6')?'<span class="badge b-gold">6</span>':''}${r.unique?'<span class="badge b-green">unique</span>':''}${r.double?'<span class="badge b-purple">double</span>':''}</div></td>
+    </tr>`).join('');
+
+  const planCards = result.plan.map(p=>`<div class="plan ${p.playNo<=2?'top':''}">
+      <div class="small">Play ${p.playNo} · ${p.withFireball?'Straight/Box + Fireball':'Straight/Box only'} · $${p.cost}</div>
+      <div class="combo mono">${p.combo}</div>
+      <div class="meta">Top-ranked by modeled crowd behavior, overdue history, and rarity.<br>Value score: <strong>${p.valueScore.toFixed(3)}</strong></div>
+      <div class="badges" style="margin-top:8px;">${p.unique?'<span class="badge b-green">all unique</span>':''}${p.double?'<span class="badge b-purple">double</span>':''}${p.combo.includes('3')?'<span class="badge b-gold">contains 3</span>':''}${p.combo.includes('6')?'<span class="badge b-gold">contains 6</span>':''}</div>
+    </div>`).join('');
+
+  const payoutRows = result.plan.map(p=>`<tr>
+      <td>Play ${p.playNo}</td>
+      <td class="mono">${p.combo}</td>
+      <td>${p.withFireball?'Straight/Box + Fireball':'Straight/Box only'}</td>
+      <td>$${p.payout.exact}</td>
+      <td>$${p.payout.any}</td>
+      <td><span class="good">under $599 ✅</span></td>
+      <td><span class="good">retailer cashable ✅</span></td>
+    </tr>`).join('');
+
+  const ranked100Rows = result.ranked100.map((r, idx)=>`<tr>
+      <td>${idx+1}</td>
+      <td class="mono"><strong>${r.combo}</strong></td>
+      <td>${r.valueScore.toFixed(3)}</td>
+      <td>${fmt(r.estPlayers)}</td>
+      <td>${r.overdue}</td>
+      <td>${r.histFreq}</td>
+      <td><div class="badges">${r.unique?'<span class="badge b-green">unique</span>':''}${r.double?'<span class="badge b-purple">double</span>':''}${r.combo.includes('3')?'<span class="badge b-gold">3</span>':''}${r.combo.includes('6')?'<span class="badge b-gold">6</span>':''}</div></td>
+    </tr>`).join('');
+
+  const modeMeaning = result.mode==='return'
+    ? 'Maximize return favors a blend of overdue score, rarity, crowd avoidance, and payout-friendly structure. It does not make the draw physically more likely; it ranks which combos may be more valuable if you do hit.'
+    : result.mode==='uniqueness'
+    ? 'Maximize uniqueness favors combos the crowd is least likely to buy, which may reduce prize sharing.'
+    : 'Show both mixes high-ranking unique-digit and repeated-digit candidates so you can compare styles side by side.';
+
+  document.getElementById(tabKey+'-results').innerHTML = `
+    ${summary}
+    <div class="grid2">
+      <div class="card">
+        <div class="sectionTitle">SECTION A — TOP 25 GHOST COMBOS</div>
+        <div class="tableWrap"><table><thead><tr><th>#</th><th>Combo</th><th>Estimated player count</th><th>Overdue</th><th>Historical freq</th><th>Type</th><th>Why humans avoid it</th></tr></thead><tbody>${top25Rows}</tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="sectionTitle">Engine Notes</div>
+        <div class="notice">
+          <strong>Ghost combos</strong> are the lowest-selected combinations in the weighted crowd model.<br><br><strong>Recent-hit rule:</strong> any officially saved combo is excluded from Midday, Evening, and Combined rankings until you delete that saved update.<br><br>
+          <strong>Maximize return</strong> means the model ranks combos by crowd avoidance + overdue distance + rarity + small structure bonuses. ${modeMeaning}<br><br>
+          <strong>What do the tags mean?</strong><br>
+          <span class="badge b-green">unique</span> = all 3 digits different<br>
+          <span class="badge b-purple">double</span> = one digit repeats exactly once<br>
+          <span class="badge b-gold">3</span> = contains digit 3<br>
+          <span class="badge b-gold">6</span> = contains digit 6<br><br>
+          <strong>Odds note:</strong> a specific exact-order Pick-3 combo is still 1 in 1,000. Choosing 10 different combos gives you about a 1 in 100 chance that one of your exact 10 matches, before considering box / Fireball outcomes. This engine improves selection strategy, not the machine odds.
+        </div>
+      </div>
+    </div>
+    <div class="cols" style="margin-top:16px;">
+      <div class="card">
+        <div class="sectionTitle">SECTION B — HIGHEST VALUE PLAYS · UNIQUE-DIGIT SECTION</div>
+        <div class="small" style="margin-bottom:10px;">Tag legend: <span class="badge b-green">unique</span> all 3 digits different · <span class="badge b-gold">3</span> contains digit 3 · <span class="badge b-gold">6</span> contains digit 6</div>
+        <div class="tableWrap"><table><thead><tr><th>#</th><th>Combo</th><th>Value score</th><th>Estimated players</th><th>Overdue</th><th>Hist freq</th><th>Tags</th></tr></thead><tbody>${overlapRows(result.uniqueSection)}</tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="sectionTitle">SECTION B — HIGHEST VALUE PLAYS · DOUBLES SECTION</div>
+        <div class="small" style="margin-bottom:10px;">Tag legend: <span class="badge b-purple">double</span> one digit repeats · <span class="badge b-gold">3</span> contains digit 3 · <span class="badge b-gold">6</span> contains digit 6</div>
+        <div class="tableWrap"><table><thead><tr><th>#</th><th>Combo</th><th>Value score</th><th>Estimated players</th><th>Overdue</th><th>Hist freq</th><th>Tags</th></tr></thead><tbody>${overlapRows(result.repeatSection)}</tbody></table></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <div class="sectionTitle">SECTION C — MY 10 PLAYS FOR TONIGHT</div>
+      <div class="small" style="margin-bottom:12px;">These are the current <strong>top 10 model-ranked candidates</strong> for the selected mode. The first 2 are Fireball plays. If mode is <strong>Show both</strong>, the engine mixes top unique-digit and top repeated-digit candidates.</div>
+      <div class="planGrid">${planCards}</div>
+      <div style="margin-top:10px" class="notice"><strong>Total cost:</strong> $${totalCost} exactly.</div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <div class="sectionTitle">SECTION D — PAYOUT CONFIRMATION</div>
+      <div class="tableWrap"><table><thead><tr><th>Play</th><th>Combo</th><th>Bet type</th><th>Exact order</th><th>Any order</th><th>Under $599</th><th>Store cashable</th></tr></thead><tbody>${payoutRows}</tbody></table></div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <div class="sectionTitle">SECTION D.2 — TOP 100 POSSIBLE WINNERS</div>
+      <div class="small" style="margin-bottom:10px;">This is the model-ranked Top 100 candidate list for the selected engine and mode. Rank 1 is the strongest current model candidate.</div>
+      <div class="tableWrap"><table><thead><tr><th>#</th><th>Combo</th><th>Value score</th><th>Estimated players</th><th>Overdue</th><th>Hist freq</th><th>Tags</th></tr></thead><tbody>${ranked100Rows}</tbody></table></div>
+    </div>
+  `;
+}
+
+function renderTopSummary() {
+  const mid = ENGINE_DATA.datasets.MID, eve = ENGINE_DATA.datasets.EVE, both = ENGINE_DATA.datasets.BOTH;
+  document.getElementById('topSummary').innerHTML = `
+    <div class="card"><div class="k">Evening coverage</div><div class="v">${eve.date_start}</div><div class="small">to ${eve.date_end} · ${fmt(eve.total_draws)} draws</div></div>
+    <div class="card"><div class="k">Midday coverage</div><div class="v">${mid.date_start}</div><div class="small">to ${mid.date_end} · ${fmt(mid.total_draws)} draws</div></div>
+    <div class="card"><div class="k">Combined draws</div><div class="v">${fmt(both.total_draws)}</div><div class="small">Fireball rows parsed separately</div></div>
+    <div class="card"><div class="k">Pick-3 start</div><div class="v">${ENGINE_DATA.coverage_notes.pick3_started}</div><div class="small">Evening game launch</div></div>
+    <div class="card"><div class="k">Midday start</div><div class="v">${ENGINE_DATA.coverage_notes.midday_started}</div><div class="small">Second daily draw added</div></div>
+    <div class="card"><div class="k">Fireball start</div><div class="v">${ENGINE_DATA.coverage_notes.fireball_started}</div><div class="small">4th digit parsed as Fireball only</div></div>
+  `;
+}
+
+function renderTracker() {
+  document.getElementById('pane-tracker').innerHTML = `
+    <div class="card">
+      <div class="sectionTitle">Winner + Ticket Tracker</div>
+      <div class="notice">Use this section to paste in official winning numbers and compare them to your logged plays. For post-2017 results, enter the Pick-3 combo in the first 3 boxes and Fireball in the optional 4th box.</div>
+      <div class="cols" style="margin-top:14px;">
+        <div>
+          <div class="small" style="margin-bottom:8px;">Add official winning draw</div>
+          <div class="formGrid">
+            <input id="winDate" type="date">
+            <select id="winDraw"><option value="MID">Midday</option><option value="EVE">Evening</option></select>
+            <input id="win1" maxlength="1" placeholder="n1">
+            <input id="win2" maxlength="1" placeholder="n2">
+            <input id="win3" maxlength="1" placeholder="n3">
+            <input id="winFB" maxlength="1" placeholder="FB">
+            <button class="primary" onclick="addWinningDraw()">Add winner</button>
+          </div>
+        </div>
+        <div>
+          <div class="small" style="margin-bottom:8px;">Add my play</div>
+          <div class="formGrid">
+            <input id="playDate" type="date">
+            <select id="playDraw"><option value="MID">Midday</option><option value="EVE">Evening</option></select>
+            <input id="play1" maxlength="1" placeholder="n1">
+            <input id="play2" maxlength="1" placeholder="n2">
+            <input id="play3" maxlength="1" placeholder="n3">
+            <select id="playType"><option value="SBF">Straight/Box + Fireball</option><option value="SB">Straight/Box only</option></select>
+            <button class="secondary" onclick="addPlay()">Add play</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <div class="sectionTitle">Logged plays</div>
+      <div class="tableWrap"><table><thead><tr><th>Date</th><th>Draw</th><th>Play</th><th>Type</th><th>Result</th><th>P/L</th></tr></thead><tbody id="trackerRows"><tr><td colspan="6" class="small">No plays logged yet.</td></tr></tbody></table></div>
+    </div>`;
+}
+
+function addWinningDraw() {
+  const date = document.getElementById('winDate').value;
+  const draw = document.getElementById('winDraw').value;
+  const n1 = document.getElementById('win1').value;
+  const n2 = document.getElementById('win2').value;
+  const n3 = document.getElementById('win3').value;
+  const fb = document.getElementById('winFB').value;
+  if (!date || n1==='' || n2==='' || n3==='') return;
+  state.winningDraws.push({ date, draw, combo:`${n1}${n2}${n3}`, fb });
+  rerenderTrackerRows();
+}
+function addPlay() {
+  const date = document.getElementById('playDate').value;
+  const draw = document.getElementById('playDraw').value;
+  const n1 = document.getElementById('play1').value;
+  const n2 = document.getElementById('play2').value;
+  const n3 = document.getElementById('play3').value;
+  const type = document.getElementById('playType').value;
+  if (!date || n1==='' || n2==='' || n3==='') return;
+  state.loggedPlays.push({ date, draw, combo:`${n1}${n2}${n3}`, type });
+  rerenderTrackerRows();
+}
+function rerenderTrackerRows() {
+  const body = document.getElementById('trackerRows');
+  if (!body) return;
+  if (!state.loggedPlays.length) { body.innerHTML = '<tr><td colspan="6" class="small">No plays logged yet.</td></tr>'; return; }
+  body.innerHTML = state.loggedPlays.map(p => {
+    const win = state.winningDraws.find(w => w.date===p.date && w.draw===p.draw);
+    let result = 'Pending';
+    let pl = - (p.type==='SBF' ? 2 : 1);
+    if (win) {
+      const payout = payoutInfo(p.combo, p.type==='SBF');
+      const sortedP = p.combo.split('').sort().join('');
+      const sortedW = win.combo.split('').sort().join('');
+      if (p.combo === win.combo) { result = 'Exact'; pl = payout.exact - (p.type==='SBF' ? 2 : 1); }
+      else if (sortedP === sortedW) { result = 'Any order'; pl = payout.any - (p.type==='SBF' ? 2 : 1); }
+      else result = 'Loss';
+    }
+    return `<tr><td>${p.date}</td><td>${p.draw}</td><td class="mono">${p.combo}</td><td>${p.type}</td><td>${result}</td><td class="${pl>=0?'good':'danger'}">${pl>=0?'+':''}$${pl}</td></tr>`;
+  }).join('');
+}
+
+function addManualOfficialResult() {
+  const date = document.getElementById('updDate')?.value?.trim();
+  const draw = document.getElementById('updDraw')?.value;
+  const n1 = document.getElementById('upd1')?.value?.trim();
+  const n2 = document.getElementById('upd2')?.value?.trim();
+  const n3 = document.getElementById('upd3')?.value?.trim();
+  const fireball = document.getElementById('updFB')?.value?.trim() || '';
+  const combo = `${n1||''}${n2||''}${n3||''}`;
+  if (!date) { setUpdateStatus('Please choose a date.', 'error'); return; }
+  if (!/^\d$/.test(n1||'') || !/^\d$/.test(n2||'') || !/^\d$/.test(n3||'')) { setUpdateStatus('Enter one digit in each Pick-3 box.', 'error'); return; }
+  if (fireball && !/^\d$/.test(fireball)) { setUpdateStatus('Fireball must be one digit from 0 to 9.', 'error'); return; }
+  const key = `${date}_${draw}`;
+  state.manualOfficialUpdates = state.manualOfficialUpdates.filter(x => `${x.date}_${x.draw}` !== key);
+  state.manualOfficialUpdates.push({ date, draw, combo, fireball });
+  state.manualOfficialUpdates.sort((a,b)=> (a.date < b.date ? 1 : -1));
+  saveManualUpdates();
+  renderDataPane();
+  renderTopSummary();
+  runEngine('eve');
+  runEngine('mid');
+  runEngine('both');
+  setUpdateStatus(`Saved ${draw==='EVE'?'Evening':'Midday'} ${combo}${fireball!==''?` / Fireball ${fireball}`:''} for ${date}.`, 'ok');
+}
+
+function removeManualOfficialResult(index) {
+  state.manualOfficialUpdates.splice(index,1);
+  saveManualUpdates();
+  renderDataPane();
+  runEngine('eve'); runEngine('mid'); runEngine('both');
+}
+
+
+function isoLocal(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  const d = String(date.getDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
+function addDaysISO(iso, days) {
+  const [y,m,d] = iso.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  dt.setDate(dt.getDate() + days);
+  return isoLocal(dt);
+}
+function usToIso(us) {
+  const m = String(us||'').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return '';
+  return `${m[3]}-${m[1]}-${m[2]}`;
+}
+function isoToUs(iso) {
+  const m = String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return iso || '';
+  return `${m[2]}/${m[3]}/${m[1]}`;
+}
+function compareIso(a,b) {
+  return String(a).localeCompare(String(b));
+}
+function currentExpectedCutoffs(now) {
+  now = now || new Date();
+  const midCut = new Date(now); midCut.setHours(12,59,0,0);
+  const eveCut = new Date(now); eveCut.setHours(22,57,0,0);
+  const yesterday = new Date(now); yesterday.setDate(now.getDate()-1);
+  return {
+    MID: now >= midCut ? isoLocal(now) : isoLocal(yesterday),
+    EVE: now >= eveCut ? isoLocal(now) : isoLocal(yesterday)
+  };
+}
+function addOrReplaceManualUpdate(date, draw, combo, fireball, silent) {
+  const key = `${date}_${draw}`;
+  state.manualOfficialUpdates = state.manualOfficialUpdates.filter(x => `${x.date}_${x.draw}` !== key);
+  state.manualOfficialUpdates.push({ date, draw, combo, fireball: fireball || '' });
+  state.manualOfficialUpdates.sort((a,b)=> (a.date < b.date ? 1 : -1));
+  saveManualUpdates();
+  if (!silent) {
+    renderDataPane();
+    renderTopSummary();
+    runEngine('eve');
+    runEngine('mid');
+    runEngine('both');
+  }
+}
+function buildCoverageReport(now) {
+  now = now || new Date();
+  const expected = currentExpectedCutoffs(now);
+  const report = { generated: isoLocal(now), expected, draws: {}, totalMissing: 0 };
+  ['MID','EVE'].forEach(draw => {
+    const baseEnd = ENGINE_DATA.datasets[draw].date_end;
+    const latestExpected = expected[draw];
+    const missing = [];
+    const manualKeys = new Set(state.manualOfficialUpdates.filter(x => x.draw===draw).map(x => `${x.date}_${x.draw}`));
+    let d = addDaysISO(baseEnd, 1);
+    while (compareIso(d, latestExpected) <= 0) {
+      const key = `${d}_${draw}`;
+      if (!manualKeys.has(key)) missing.push(d);
+      d = addDaysISO(d, 1);
+    }
+    report.draws[draw] = {
+      draw,
+      baseEnd,
+      latestExpected,
+      missing,
+      missingCount: missing.length,
+      firstMissing: missing[0] || '',
+      lastMissing: missing.length ? missing[missing.length-1] : '',
+      overlayEnd: (state.manualOfficialUpdates.filter(x => x.draw===draw).map(x => x.date).sort().slice(-1)[0]) || ''
+    };
+    report.totalMissing += missing.length;
+  });
+  return report;
+}
+function coverageHtml(report) {
+  const card = (label, data) => {
+    const detail = data.missingCount
+      ? `<div class="small"><span class="warn">Missing ${fmt(data.missingCount)} draw${data.missingCount===1?'':'s'}</span><br>${data.firstMissing}${data.lastMissing && data.lastMissing!==data.firstMissing ? ` → ${data.lastMissing}` : ''}</div>`
+      : `<div class="small good">No missing dates based on current cutoff.</div>`;
+    return `<div class="card"><div class="k">${label}</div><div class="v">${data.baseEnd}</div><div class="small">Built-in base end</div><div class="small" style="margin-top:8px;">Expected through ${data.latestExpected}</div>${detail}</div>`;
+  };
+  const missingRows = ['MID','EVE'].map(draw => {
+    const d = report.draws[draw];
+    const preview = d.missing.length ? d.missing.slice(0,10).join(', ') + (d.missing.length>10 ? ` … (+${d.missing.length-10} more)` : '') : 'None';
+    return `<tr><td>${draw==='MID'?'Midday':'Evening'}</td><td>${d.baseEnd}</td><td>${d.latestExpected}</td><td>${d.missingCount}</td><td class="small">${preview}</td></tr>`;
+  }).join('');
+  return `
+    <div class="summary" style="margin-top:16px;">
+      ${card('Midday base', report.draws.MID)}
+      ${card('Evening base', report.draws.EVE)}
+      <div class="card"><div class="k">Total missing draw dates</div><div class="v">${fmt(report.totalMissing)}</div><div class="small">Missing dates only. Each row still needs the official 3 digits and optional Fireball.</div></div>
+    </div>
+    <div class="tableWrap" style="margin-top:12px;"><table><thead><tr><th>Draw</th><th>Built-in through</th><th>Expected through</th><th>Missing</th><th>Preview</th></tr></thead><tbody>${missingRows}</tbody></table></div>`;
+}
+function buildMissingCsv(report) {
+  const lines = ['date,draw,combo,fireball'];
+  ['MID','EVE'].forEach(draw => {
+    report.draws[draw].missing.forEach(date => lines.push(`${date},${draw},,`));
+  });
+  return lines.join('\n');
+}
+function downloadMissingTemplate() {
+  const report = buildCoverageReport(new Date());
+  const csv = buildMissingCsv(report);
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `nj_pick3_missing_dates_${isoLocal(new Date())}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Missing-date CSV template downloaded.', '#46e58c');
+}
+function normalizeFetchedText(raw) {
+  const html = String(raw || '');
+  let text = html;
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    text = (doc.body && doc.body.textContent) ? doc.body.textContent : html;
+  } catch (e) {}
+  return text
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function extractLatestOfficialResults(raw) {
+  const text = normalizeFetchedText(raw);
+  const parse = (label) => {
+    const re = new RegExp(`${label}\\s*\\((\\d{2}\\/\\d{2}\\/\\d{4})\\)\\s*([0-9])\\s*([0-9])\\s*([0-9])(?:\\s*([0-9]))?`, 'i');
+    const m = text.match(re);
+    if (!m) return null;
+    return { date: usToIso(m[1]), combo: `${m[2]}${m[3]}${m[4]}`, fireball: m[5] || '' };
+  };
+  return { MID: parse('MIDDAY'), EVE: parse('EVENING') };
+}
+async function fetchOfficialPick3Page(url) {
+  url = url || 'https://www.njlottery.com/en-us/drawgames/pick3.html';
+  const attempts = [
+    { label:'direct', url },
+    { label:'AllOrigins raw', url:`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}` },
+    { label:'AllOrigins json', url:`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, json:true },
+    { label:'Jina mirror', url:'https://r.jina.ai/http://www.njlottery.com/en-us/drawgames/pick3.html' }
+  ];
+  let errors = [];
+  for (const attempt of attempts) {
+    try {
+      const res = await fetch(attempt.url, { cache:'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      let text;
+      if (attempt.json) {
+        const data = await res.json();
+        text = data && data.contents ? data.contents : '';
+      } else {
+        text = await res.text();
+      }
+      if (!text || text.length < 200) throw new Error('Response too short');
+      return { source: attempt.label, text };
+    } catch (err) {
+      errors.push(`${attempt.label}: ${err.message}`);
+    }
+  }
+  throw new Error(errors.join(' | '));
+}
+async function syncLatestOfficial(opts) {
+  opts = opts || {};
+  const apply = opts.apply !== false;
+  const silent = !!opts.silent;
+  const btn = document.getElementById('syncOfficialBtn');
+  const status = document.getElementById('syncOfficialStatus');
+  const sourceUrl = document.getElementById('sourceUrl')?.value?.trim() || 'https://www.njlottery.com/en-us/drawgames/pick3.html';
+  if (btn && !silent) btn.disabled = true;
+  if (status) status.textContent = 'Fetching official Pick-3 page…';
+  try {
+    const fetched = await fetchOfficialPick3Page(sourceUrl);
+    const parsed = extractLatestOfficialResults(fetched.text);
+    if (!parsed.MID && !parsed.EVE) throw new Error('Could not find current Midday/Evening results on fetched page.');
+    const applied = [];
+    ['MID','EVE'].forEach(draw => {
+      const r = parsed[draw];
+      if (!r || !r.date || !r.combo) return;
+      if (apply) addOrReplaceManualUpdate(r.date, draw, r.combo, r.fireball || '', true);
+      applied.push(`${draw==='MID'?'Midday':'Evening'} ${r.date} ${r.combo}${r.fireball!==''?` / FB ${r.fireball}`:''}`);
+    });
+    if (apply) {
+      renderDataPane();
+      renderTopSummary();
+      runEngine('eve');
+      runEngine('mid');
+      runEngine('both');
+    }
+    const msg = applied.length
+      ? `${apply ? 'Synced' : 'Fetched'} ${applied.join(' · ')} via ${fetched.source}.`
+      : `Fetched official page via ${fetched.source}, but no results were parsed.`;
+    if (status) status.textContent = msg;
+    if (!silent) showToast(msg, '#46e58c');
+    return parsed;
+  } catch (err) {
+    const msg = `Live sync failed. ${err.message}. You can still use the bulk paste box below.`;
+    if (status) status.textContent = msg;
+    if (!silent) showToast(msg, '#ff6b6b');
+    throw err;
+  } finally {
+    if (btn && !silent) btn.disabled = false;
+  }
+}
+function setAutoSync(enabled) {
+  localStorage.setItem('__pick3_auto_sync__', enabled ? '1' : '0');
+  if (window.__pick3AutoSyncTimer) {
+    clearInterval(window.__pick3AutoSyncTimer);
+    window.__pick3AutoSyncTimer = null;
+  }
+  if (enabled) {
+    window.__pick3AutoSyncTimer = setInterval(() => syncLatestOfficial({ apply:true, silent:true }).catch(()=>{}), 10 * 60 * 1000);
+  }
+}
+function bulkImportOfficialResults() {
+  const area = document.getElementById('bulkResults');
+  const raw = area ? area.value.trim() : '';
+  if (!raw) {
+    setUpdateStatus('Paste one or more lines first.', 'error');
+    return;
+  }
+  const lines = raw.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  let count = 0;
+  const bad = [];
+  lines.forEach((line, idx) => {
+    const cleaned = line.replace(/\s+/g, ' ').trim();
+    let m = cleaned.match(/^(\d{4}-\d{2}-\d{2})[ ,\t]+(MID|EVE)[ ,\t]+(\d{3})(?:[ ,\t]+(\d))?$/i);
+    if (!m) m = cleaned.match(/^(\d{2}\/\d{2}\/\d{4})[ ,\t]+(MID|EVE)[ ,\t]+(\d{3})(?:[ ,\t]+(\d))?$/i);
+    if (!m) m = cleaned.match(/^(\d{4}-\d{2}-\d{2})[ ,\t]+(Midday|Evening)[ ,\t]+(\d{3})(?:[ ,\t]+(\d))?$/i);
+    if (!m) m = cleaned.match(/^(\d{2}\/\d{2}\/\d{4})[ ,\t]+(Midday|Evening)[ ,\t]+(\d{3})(?:[ ,\t]+(\d))?$/i);
+    if (!m) { bad.push(`#${idx+1}`); return; }
+    let date = m[1].includes('/') ? usToIso(m[1]) : m[1];
+    let draw = /mid/i.test(m[2]) ? 'MID' : 'EVE';
+    let combo = m[3];
+    let fireball = m[4] || '';
+    addOrReplaceManualUpdate(date, draw, combo, fireball, true);
+    count += 1;
+  });
+  saveManualUpdates();
+  renderDataPane();
+  renderTopSummary();
+  runEngine('eve');
+  runEngine('mid');
+  runEngine('both');
+  if (area) area.value = '';
+  const msg = `Imported ${count} result${count===1?'':'s'}${bad.length ? ` · skipped ${bad.join(', ')}` : ''}.`;
+  setUpdateStatus(msg, bad.length ? 'error' : 'ok');
+}
+function renderDataPane() {
+  const mid = ENGINE_DATA.datasets.MID, eve = ENGINE_DATA.datasets.EVE, both = ENGINE_DATA.datasets.BOTH;
+  const yearList = (start, end) => `${start.slice(0,4)}–${end.slice(0,4)}`;
+  const rows = state.manualOfficialUpdates.length ? state.manualOfficialUpdates.map((u, idx)=>`<tr><td>${u.date}</td><td>${u.draw}</td><td class="mono">${u.combo}</td><td>${u.fireball||''}</td><td><button onclick="removeManualOfficialResult(${idx})">Delete</button></td></tr>`).join('') : '<tr><td colspan="5" class="small">No manual updates saved yet.</td></tr>';
+  const report = buildCoverageReport(new Date());
+  const autoSyncEnabled = localStorage.getItem('__pick3_auto_sync__') === '1';
+  document.getElementById('pane-data').innerHTML = `
+    <div class="card">
+      <div class="sectionTitle">Data coverage and parsing</div>
+      <div class="notice">
+        <strong>Pick-3 start:</strong> ${ENGINE_DATA.coverage_notes.pick3_started}<br>
+        <strong>Midday start:</strong> ${ENGINE_DATA.coverage_notes.midday_started}<br>
+        <strong>Fireball start:</strong> ${ENGINE_DATA.coverage_notes.fireball_started}<br><br>
+        <strong>Post-Fireball rule used in this engine:</strong> ${ENGINE_DATA.coverage_notes.post_fireball_rule}
+      </div>
+      <div class="summary" style="margin-top:16px;">
+        <div class="card"><div class="k">Evening years</div><div class="v">${yearList(eve.date_start,eve.date_end)}</div><div class="small">${fmt(eve.total_draws)} parsed draws</div></div>
+        <div class="card"><div class="k">Midday years</div><div class="v">${yearList(mid.date_start,mid.date_end)}</div><div class="small">${fmt(mid.total_draws)} parsed draws</div></div>
+        <div class="card"><div class="k">Combined draws</div><div class="v">${fmt(both.total_draws)}</div><div class="small">Generated ${ENGINE_DATA.generated_at}</div></div>
+      </div>
+      <div class="small" style="margin-top:12px;">Built-in history gives you the base engine. Manual and live-synced results are layered on top locally so the rankings can move forward without rebuilding the entire file.</div>
+      ${coverageHtml(report)}
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="sectionTitle">NJ Lottery Live Sync</div>
+      <div class="notice">This edition can try to pull the latest official Pick-3 page directly from the NJ Lottery site. Because a downloaded HTML file may hit browser CORS limits, it automatically falls back to proxy fetch methods if direct access is blocked.</div>
+      <div class="formGrid" style="margin-top:12px;grid-template-columns:1.5fr repeat(4,minmax(120px,1fr));align-items:center;">
+        <input id="sourceUrl" value="https://www.njlottery.com/en-us/drawgames/pick3.html">
+        <button id="syncOfficialBtn" class="primary" type="button">🔄 Sync latest official results</button>
+        <button id="downloadMissingBtn" class="secondary" type="button">⬇ Missing-date CSV</button>
+        <label style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;"><input id="autoSyncToggle" type="checkbox" ${autoSyncEnabled?'checked':''}> Auto-sync every 10 min</label>
+        <div class="small" style="display:flex;align-items:center;">Official URL editable if NJ Lottery changes it.</div>
+      </div>
+      <div id="syncOfficialStatus" class="small" style="margin-top:10px;">Ready. Latest expected cutoff right now: Midday ${report.expected.MID}, Evening ${report.expected.EVE}.</div>
+      <div class="small" style="margin-top:6px;color:#9ee6ff;">Live sync is best for the newest posted results. Use bulk import below for older missing dates.</div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="sectionTitle">Bulk historical importer</div>
+      <div class="notice">Paste one line per official result using any of these formats: <span class="mono">2026-03-23 MID 123 4</span>, <span class="mono">2026-03-23,EVE,987,0</span>, or <span class="mono">03/23/2026 Midday 123 4</span>.</div>
+      <textarea id="bulkResults" style="width:100%;min-height:140px;margin-top:12px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;" placeholder="2026-03-23 MID 123 4&#10;2026-03-23 EVE 456 7"></textarea>
+      <div class="controls" style="margin-top:12px;">
+        <button id="bulkImportBtn" class="primary" type="button">Import pasted results</button>
+        <button class="secondary" type="button" onclick="exportBackup()">💾 Export backup</button>
+        <label class="secondary" style="cursor:pointer;padding:10px 12px;border-radius:10px;font-size:14px;font-weight:700;background:linear-gradient(135deg,var(--gold),#d29d17);color:#201400;border:none;display:inline-block;">📂 Import JSON backup<input type="file" accept=".json" style="display:none;" onchange="importBackup(this)"></label>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="sectionTitle">Single official result updater</div>
+      <div class="notice">Enter one official Pick-3 result manually. For post-2017 draws, enter the 3 Pick-3 digits and the optional Fireball separately.</div>
+      <div class="formGrid" style="margin-top:12px;">
+        <input id="updDate" type="date">
+        <select id="updDraw"><option value="EVE">Evening</option><option value="MID">Midday</option></select>
+        <input id="upd1" maxlength="1" placeholder="n1">
+        <input id="upd2" maxlength="1" placeholder="n2">
+        <input id="upd3" maxlength="1" placeholder="n3">
+        <input id="updFB" maxlength="1" placeholder="FB">
+        <button id="updBtn" class="primary" type="button">Update engine data</button>
+      </div>
+      <div id="updStatus" class="small" style="margin-top:10px;">Ready to save a manual official result.</div>
+      <div class="small" style="margin-top:6px;color:#9ee6ff;">Saved official hits are excluded from Section B, Section C, and Top 100 so the engine ranks the next-draw candidates instead.</div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="sectionTitle">Saved local updates</div>
+      <div class="tableWrap"><table><thead><tr><th>Date</th><th>Draw</th><th>Combo</th><th>Fireball</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>
+    </div>`;
+
+  const updDate = document.getElementById('updDate');
+  if (updDate) updDate.value = isoLocal(new Date());
+  const updFB = document.getElementById('updFB');
+  if (updFB && !updFB.value) updFB.value = '0';
+  const updBtn = document.getElementById('updBtn');
+  if (updBtn && !updBtn.dataset.bound) {
+    updBtn.addEventListener('click', addManualOfficialResult);
+    updBtn.dataset.bound = '1';
+  }
+  const syncBtn = document.getElementById('syncOfficialBtn');
+  if (syncBtn && !syncBtn.dataset.bound) {
+    syncBtn.addEventListener('click', () => syncLatestOfficial({ apply:true }).catch(()=>{}));
+    syncBtn.dataset.bound = '1';
+  }
+  const bulkBtn = document.getElementById('bulkImportBtn');
+  if (bulkBtn && !bulkBtn.dataset.bound) {
+    bulkBtn.addEventListener('click', bulkImportOfficialResults);
+    bulkBtn.dataset.bound = '1';
+  }
+  const missingBtn = document.getElementById('downloadMissingBtn');
+  if (missingBtn && !missingBtn.dataset.bound) {
+    missingBtn.addEventListener('click', downloadMissingTemplate);
+    missingBtn.dataset.bound = '1';
+  }
+  const autoToggle = document.getElementById('autoSyncToggle');
+  if (autoToggle && !autoToggle.dataset.bound) {
+    autoToggle.addEventListener('change', e => setAutoSync(e.target.checked));
+    autoToggle.dataset.bound = '1';
+  }
+  setAutoSync(autoSyncEnabled);
+}
+
+function initTabs() {
+
+  document.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tabpane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('pane-'+btn.dataset.tab).classList.add('active');
+  }));
+}
+
+function init() {
+  renderTopSummary();
+  document.getElementById('pane-eve').innerHTML = engineSkeleton('eve','Evening Engine','$12 evening play plan. Uses the full evening history, including post-2017 Fireball rows parsed as 3-digit Pick-3 + 1 Fireball.');
+  document.getElementById('pane-mid').innerHTML = engineSkeleton('mid','Midday Engine','$12 midday play plan. Uses the full midday history beginning when midday drawings started in November 2001.');
+  document.getElementById('pane-both').innerHTML = engineSkeleton('both','Combined Engine','Cross-checks midday and evening history together for a blended crowd/rarity view. Useful when you want to compare what survives across both engines.');
+  renderTracker();
+  renderDataPane();
+  initTabs();
+  runEngine('eve');
+  runEngine('mid');
+  runEngine('both');
+  const today = new Date().toISOString().slice(0,10);
+  ['winDate','playDate'].forEach(id => { const el = document.getElementById(id); if (el) el.value = today; });
+}
+
+// ─── COUNTDOWN ────────────────────────────────
+function startCountdown() {
+  function tick() {
+    const now = new Date();
+    const mid = new Date(now); mid.setHours(12,59,0,0);
+    const eve = new Date(now); eve.setHours(22,57,0,0);
+    let next, label;
+    if (now < mid) { next=mid; label='MIDDAY DRAW · 12:59 PM'; }
+    else if (now < eve) { next=eve; label='EVENING DRAW · 10:57 PM'; }
+    else {
+      next = new Date(now);
+      next.setDate(next.getDate()+1);
+      next.setHours(12,59,0,0);
+      label = 'TOMORROW MIDDAY · 12:59 PM';
+    }
+    const diff = next - now;
+    const h = Math.floor(diff/3600000);
+    const m = Math.floor((diff%3600000)/60000);
+    const s = Math.floor((diff%60000)/1000);
+    const pad = n => String(n).padStart(2,'0');
+    const cdEl = document.getElementById('cdTimer');
+    const dnEl = document.getElementById('nextDrawName');
+    const tsEl = document.getElementById('todayStr');
+    if (cdEl) {
+      cdEl.textContent = pad(h)+':'+pad(m)+':'+pad(s);
+      cdEl.style.color = diff < 300000 ? '#ff6b6b' : '#ffd166';
+    }
+    if (dnEl) dnEl.textContent = label;
+    if (tsEl) tsEl.textContent = now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ─── EXPORT / IMPORT ──────────────────────────
+function exportBackup() {
+  try {
+    const data = JSON.stringify(state.manualOfficialUpdates, null, 2);
+    const blob = new Blob([data], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'pick3_backup_' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Backup exported!', '#46e58c');
+  } catch(e) {
+    showToast('Export failed: ' + e.message, '#ff6b6b');
+  }
+}
+
+function importBackup(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data)) throw new Error('Invalid format');
+      state.manualOfficialUpdates = data;
+      saveManualUpdates();
+      renderDataPane();
+      renderTopSummary();
+      runEngine('eve');
+      runEngine('mid');
+      runEngine('both');
+      showToast('Imported ' + data.length + ' updates!', '#46e58c');
+    } catch(err) {
+      showToast('Import failed — invalid file', '#ff6b6b');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ─── TOAST ────────────────────────────────────
+function showToast(msg, color) {
+  color = color || '#27d7ff';
+  var t = document.getElementById('__toast__');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '__toast__';
+    t.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:700;font-family:Arial,sans-serif;transition:opacity .4s,transform .4s;pointer-events:none;opacity:0;transform:translateY(16px);';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = '#0d1822';
+  t.style.border = '1px solid ' + color;
+  t.style.color = color;
+  t.style.opacity = '1';
+  t.style.transform = 'translateY(0)';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function() {
+    t.style.opacity = '0';
+    t.style.transform = 'translateY(16px)';
+  }, 3500);
+}
+
+// Wrap setUpdateStatus to also show toast
+var _origSUS = setUpdateStatus;
+window.setUpdateStatus = function(msg, kind) {
+  _origSUS(msg, kind);
+  showToast(msg, kind === 'error' ? '#ff6b6b' : '#46e58c');
+};
+
+window.addManualOfficialResult = addManualOfficialResult;
+window.removeManualOfficialResult = removeManualOfficialResult;
+window.exportBackup = exportBackup;
+window.importBackup = importBackup;
+window.syncLatestOfficial = syncLatestOfficial;
+window.bulkImportOfficialResults = bulkImportOfficialResults;
+window.downloadMissingTemplate = downloadMissingTemplate;
+init();
+startCountdown();
+</script>
+</body>
+</html>
