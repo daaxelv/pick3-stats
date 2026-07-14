@@ -1,0 +1,17 @@
+{
+  "name": "NJ Pick 3/4 Ghost Combo Engine",
+  "short_name": "Ghost Engine",
+  "description": "NJ Pick 3 and Pick 4 odds calculator, historical results explorer, and combination analyzer. Pure statistics tool — does not predict winning numbers.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#061018",
+  "theme_color": "#0d1822",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

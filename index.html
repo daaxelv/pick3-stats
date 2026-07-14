@@ -2,16 +2,27 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>NJ Pick 3 Ghost Combo Engine — Auto-Updated Edition</title>
+<meta name="description" content="NJ Pick 3 and Pick 4 odds calculator, historical results explorer, and combination analyzer. Pure statistics tool — does not predict winning numbers.">
+<meta name="theme-color" content="#0d1822">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ghost Engine">
 <style>
 :root {
   --bg:#061018; --panel:#0d1822; --panel2:#132434; --line:#21435d;
   --text:#d7e8f4; --muted:#8fb2c8; --cyan:#27d7ff; --green:#46e58c; --gold:#ffd166; --red:#ff6b6b; --purple:#b388ff;
 }
 *{box-sizing:border-box}
-body{margin:0;background:linear-gradient(180deg,#061018,#081521 35%,#0a1320);color:var(--text);font-family:Arial,sans-serif;}
-.wrap{max-width:1400px;margin:0 auto;padding:22px;}
+html{-webkit-text-size-adjust:100%;}
+body{margin:0;background:linear-gradient(180deg,#061018,#081521 35%,#0a1320);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-tap-highlight-color:transparent;}
+.wrap{max-width:1400px;margin:0 auto;padding:22px;padding-left:max(22px,env(safe-area-inset-left));padding-right:max(22px,env(safe-area-inset-right));padding-bottom:max(22px,env(safe-area-inset-bottom));}
 .header{padding:20px 0 14px;border-bottom:1px solid var(--line);margin-bottom:18px;}
 .h1{font-size:34px;font-weight:800;letter-spacing:.5px} .sub{color:var(--muted);margin-top:6px;line-height:1.5}
 .disclaimer{margin-top:10px;color:var(--gold);font-size:13px}
@@ -19,10 +30,26 @@ body{margin:0;background:linear-gradient(180deg,#061018,#081521 35%,#0a1320);col
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
 .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1.4px} .v{font-size:24px;font-weight:800;margin-top:6px;color:var(--cyan)}
 .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
-select,button,input{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px}
+select,button,input{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;min-height:44px;}
 button{cursor:pointer;font-weight:700} button.primary{background:linear-gradient(135deg,var(--cyan),#0aa7d3);color:#021018;border:none} button.secondary{background:linear-gradient(135deg,var(--gold),#d29d17);color:#201400;border:none}
-.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 18px} .tab{padding:10px 16px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);cursor:pointer} .tab.active{background:#102638;color:var(--cyan);border-color:var(--cyan)}
+.tabs{display:flex;gap:8px;margin:12px 0 18px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;padding-bottom:4px;} .tab{padding:10px 16px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);cursor:pointer;flex:0 0 auto;min-height:44px;white-space:nowrap;} .tab.active{background:#102638;color:var(--cyan);border-color:var(--cyan)}
 .tabpane{display:none} .tabpane.active{display:block}
+.responsibleFooter{margin-top:24px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:#0c1a27;color:var(--muted);font-size:12px;line-height:1.6;}
+.responsibleFooter strong{color:var(--gold);}
+@media (max-width:640px){
+  .wrap{padding:14px;padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right));}
+  .h1{font-size:24px;}
+  .sub{font-size:13px;}
+  .disclaimer{font-size:12px;}
+  .sectionTitle{font-size:16px;}
+  .k{font-size:11px;} .v{font-size:20px;}
+  table{font-size:12px;} th,td{padding:8px 8px;}
+  .combo{font-size:22px;letter-spacing:2px;}
+  .controls{gap:8px;}
+  .controls button, .controls select, .controls input{flex:1 1 auto;}
+  #countdownBar{padding:10px 14px;}
+  #cdTimer{font-size:22px;}
+}
 .grid2{display:grid;grid-template-columns:1.2fr .8fr;gap:16px} @media (max-width:1000px){.grid2{grid-template-columns:1fr}}
 .sectionTitle{font-size:18px;font-weight:800;margin:0 0 12px;color:var(--cyan)}
 .tableWrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
@@ -67,6 +94,7 @@ table{width:100%;border-collapse:collapse;font-size:13px} th,td{padding:10px 12p
     <button class="tab active" data-tab="eve">Evening Engine</button>
     <button class="tab" data-tab="mid">Midday Engine</button>
     <button class="tab" data-tab="both">Combined Engine</button>
+    <button class="tab" data-tab="p4">Pick 4</button>
     <button class="tab" data-tab="tracker">Ticket Tracker</button>
     <button class="tab" data-tab="data">Data Coverage</button>
   </div>
@@ -74,8 +102,13 @@ table{width:100%;border-collapse:collapse;font-size:13px} th,td{padding:10px 12p
   <div class="tabpane active" id="pane-eve"></div>
   <div class="tabpane" id="pane-mid"></div>
   <div class="tabpane" id="pane-both"></div>
+  <div class="tabpane" id="pane-p4"></div>
   <div class="tabpane" id="pane-tracker"></div>
   <div class="tabpane" id="pane-data"></div>
+
+  <div class="responsibleFooter">
+    <strong>Play responsibly.</strong> This app is a free statistics and odds-education tool. It does not sell tickets, accept wagers, or handle real money, and it cannot predict winning numbers — NJ Pick 3 and Pick 4 drawings are random, and past results have no effect on future ones. Must be 18+ to play the New Jersey Lottery. If gambling stops being fun, call or text <strong>1-800-GAMBLER</strong> (1-800-426-2537) or visit <strong>800gambler.org</strong>.
+  </div>
   <div class="footerSpace"></div>
 </div>
 <script src="odds.js"></script>
@@ -95,6 +128,11 @@ const FALLBACK_PAYOUT_STATS = {"source":"data/nj_numbers_canonical.csv","generat
 // fails (e.g. opened as a local file with no HTTP server).
 let ENGINE_DATA = FALLBACK_ENGINE_DATA;
 let PAYOUT_STATS = FALLBACK_PAYOUT_STATS;
+// Pick 4 support: the canonical CSV already has a `game` column (P3/P4),
+// but all 26,655 current rows are P3 — Pick 4 backfill hasn't landed yet.
+// This tracks whatever P4 rows exist so the Pick 4 tab can show real
+// history the moment backfill data arrives, with no code changes needed.
+let P4_INFO = { rowCount: 0, dateStart: '', dateEnd: '' };
 
 const LUCKY = new Set(['777','111','222','333','444','555','666','888','999','000','123','321','456','654','789','987','369','147','258','007','911']);
 const UGLY_EXAMPLES = new Set(['068','379','593','847','936','192','384','573']);
@@ -850,6 +888,12 @@ async function loadLiveData() {
     if (!rows.length) throw new Error('CSV loaded but contained no rows');
     ENGINE_DATA = buildEngineDataFromRows(rows);
     PAYOUT_STATS = buildPayoutStatsFromRows(rows);
+    const p4Rows = rows.filter(r => r.game === 'P4' && /^\d-\d-\d-\d$/.test(r.digits)).sort((a, b) => compareIso(a.date, b.date));
+    P4_INFO = {
+      rowCount: p4Rows.length,
+      dateStart: p4Rows.length ? p4Rows[0].date : '',
+      dateEnd: p4Rows.length ? p4Rows[p4Rows.length - 1].date : '',
+    };
     state.dataSource = { ok: true, rowCount: rows.length, loadedAt: new Date().toISOString() };
     return true;
   } catch (err) {
@@ -867,11 +911,85 @@ async function refreshLiveData() {
   await loadLiveData();
   renderDataPane();
   renderTopSummary();
+  renderP4Pane();
   runEngine('eve');
   runEngine('mid');
   runEngine('both');
   if (btn) btn.disabled = false;
   showToast(state.dataSource.ok ? `Refreshed: ${fmt(state.dataSource.rowCount)} draws loaded.` : `Refresh failed: ${state.dataSource.error}`, state.dataSource.ok ? '#46e58c' : '#ff6b6b');
+}
+
+// --- PICK 4 TAB ---
+// Reads the same canonical CSV (game=P4 rows). Shows real Pick 4 stats
+// once backfill data exists; until then, shows a clear "history building"
+// notice plus the pure-math Pick 4 odds (which don't depend on history).
+function renderP4Pane() {
+  const has = P4_INFO.rowCount > 0;
+  const pane = document.getElementById('pane-p4');
+  if (!pane) return;
+  pane.innerHTML = `
+    <div class="card">
+      <div class="sectionTitle">Pick 4 Odds Calculator</div>
+      <div class="notice">Pure math, independent of history: NJ Pick 4 straight is always 1 in 10,000. Box play pools winning digit-orders together based on repeated digits.</div>
+      <div class="formGrid" style="margin-top:12px;grid-template-columns:repeat(2,minmax(160px,1fr));align-items:center;">
+        <div><label class="small">4-digit combo</label><input id="oddsCombo4" maxlength="4" value="1234" style="width:100%;"></div>
+        <div><label class="small"># of distinct combos played (coverage)</label><input id="oddsCoverageN4" type="number" min="1" max="10000" value="10" style="width:100%;"></div>
+      </div>
+      <div id="oddsResult4" class="summary" style="margin-top:14px;"></div>
+      <div class="summary" style="margin-top:14px;">
+        <div class="card"><div class="k">Straight</div><div class="v">1 in 10,000</div></div>
+        <div class="card"><div class="k">24-way box</div><div class="v">1 in 416.67</div><div class="small">4 unique digits</div></div>
+        <div class="card"><div class="k">12-way box</div><div class="v">1 in 833.33</div><div class="small">one pair</div></div>
+        <div class="card"><div class="k">6-way box</div><div class="v">1 in 1,666.67</div><div class="small">two pairs</div></div>
+        <div class="card"><div class="k">4-way box</div><div class="v">1 in 2,500</div><div class="small">three of a kind</div></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="sectionTitle">Pick 4 History</div>
+      ${has ? `
+        <div class="notice good">Pick 4 history is available: ${fmt(P4_INFO.rowCount)} draws on file, ${P4_INFO.dateStart} to ${P4_INFO.dateEnd}. Frequency and combination analysis for Pick 4 will appear here as the dataset grows.</div>
+      ` : `
+        <div class="notice warn">
+          <strong>History building.</strong> This app's canonical dataset (<span class="mono">data/nj_numbers_canonical.csv</span>) currently contains Pick 3 draws only. The daily automated updater already collects Pick 4 results alongside Pick 3, so once historical backfill data is added for Pick 4, this tab will automatically populate with frequency, draws-since-last-hit, and combination analysis — no app changes needed.
+        </div>
+      `}
+      <div class="small" style="margin-top:10px;color:#9ee6ff;">Data source: ${has ? 'live CSV' : (state.dataSource && state.dataSource.ok ? 'live CSV (0 Pick 4 rows found)' : 'built-in snapshot')}.</div>
+    </div>`;
+
+  const c4 = document.getElementById('oddsCombo4');
+  const n4 = document.getElementById('oddsCoverageN4');
+  if (c4 && !c4.dataset.bound) {
+    c4.addEventListener('input', renderOddsCalculator4);
+    c4.dataset.bound = '1';
+  }
+  if (n4 && !n4.dataset.bound) {
+    n4.addEventListener('input', renderOddsCalculator4);
+    n4.dataset.bound = '1';
+  }
+  renderOddsCalculator4();
+}
+
+function renderOddsCalculator4() {
+  const comboEl = document.getElementById('oddsCombo4');
+  const covEl = document.getElementById('oddsCoverageN4');
+  const out = document.getElementById('oddsResult4');
+  if (!comboEl || !covEl || !out || typeof OddsCalculator === 'undefined') return;
+  const combo = (comboEl.value || '').replace(/\D/g, '').slice(0, 4);
+  const n = Math.max(1, Math.min(10000, parseInt(covEl.value, 10) || 1));
+  if (combo.length !== 4) {
+    out.innerHTML = '<div class="small">Enter a 4-digit combo to see box odds.</div>';
+    return;
+  }
+  const straight = OddsCalculator.straightOddsP4();
+  const box = OddsCalculator.boxOddsP4(combo);
+  const cat = OddsCalculator.classifyCombo4(combo);
+  const coverage = OddsCalculator.multiComboCoverageP4(n, 1);
+  const boxLabel = { unique: '24-way box', oneDouble: '12-way box', twoPair: '6-way box', triple: '4-way box', quad: 'n/a' }[cat];
+  out.innerHTML =
+    '<div class="card"><div class="k">Straight odds</div><div class="v">1 in ' + fmt(straight.oneIn) + '</div><div class="small">Any 4-digit combo, always.</div></div>' +
+    '<div class="card"><div class="k">Box odds (' + boxLabel + ')</div><div class="v">' + (box ? '1 in ' + fmt(box.oneIn) : 'n/a') + '</div><div class="small">' + (box ? boxLabel : 'All 4 digits the same has no box option - straight only.') + '</div></div>' +
+    '<div class="card"><div class="k">Coverage: ' + n + ' combos</div><div class="v">1 in ' + fmt(coverage.exactMatchOneIn) + '</div><div class="small">$' + coverage.totalCost + ' for ' + coverage.exactMatchPercent + '% exact-match chance</div></div>';
 }
 function bulkImportOfficialResults() {
   const area = document.getElementById('bulkResults');
@@ -1073,6 +1191,7 @@ async function init() {
   document.getElementById('pane-both').innerHTML = engineSkeleton('both','Combined Engine','Cross-checks midday and evening history together for a blended crowd/rarity view. Useful when you want to compare what survives across both engines.');
   renderTracker();
   renderDataPane();
+  renderP4Pane();
   initTabs();
   runEngine('eve');
   runEngine('mid');
@@ -1083,9 +1202,14 @@ async function init() {
   await loadLiveData();
   renderTopSummary();
   renderDataPane();
+  renderP4Pane();
   runEngine('eve');
   runEngine('mid');
   runEngine('both');
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  }
 }
 
 // ─── COUNTDOWN ────────────────────────────────
