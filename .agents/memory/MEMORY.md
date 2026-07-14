@@ -1,0 +1,2 @@
+- [Large single-file HTML edit corruption](large-html-file-edit-corruption.md) — sequential Edit-tool calls on big single-file HTML apps can silently corrupt them; use one atomic script with unique-match assertions instead.
+- ImageMagick (`convert`/`magick`) is available in this environment for programmatic image/icon generation when no `sharp`/PIL/image-gen model is set up — check with `which convert` before reaching for other tooling.
