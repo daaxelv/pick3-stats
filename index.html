@@ -95,6 +95,7 @@ table{width:100%;border-collapse:collapse;font-size:13px} th,td{padding:10px 12p
     <button class="tab" data-tab="mid">Midday Engine</button>
     <button class="tab" data-tab="both">Combined Engine</button>
     <button class="tab" data-tab="p4">Pick 4</button>
+    <button class="tab" data-tab="m4l">M4L</button>
     <button class="tab" data-tab="tracker">Ticket Tracker</button>
     <button class="tab" data-tab="data">Data Coverage</button>
   </div>
@@ -103,6 +104,7 @@ table{width:100%;border-collapse:collapse;font-size:13px} th,td{padding:10px 12p
   <div class="tabpane" id="pane-mid"></div>
   <div class="tabpane" id="pane-both"></div>
   <div class="tabpane" id="pane-p4"></div>
+  <div class="tabpane" id="pane-m4l"></div>
   <div class="tabpane" id="pane-tracker"></div>
   <div class="tabpane" id="pane-data"></div>
 
@@ -133,6 +135,11 @@ let PAYOUT_STATS = FALLBACK_PAYOUT_STATS;
 // This tracks whatever P4 rows exist so the Pick 4 tab can show real
 // history the moment backfill data arrives, with no code changes needed.
 let P4_INFO = { rowCount: 0, dateStart: '', dateEnd: '' };
+// Millionaire for Life (M4L): NJ's nightly 5-of-58 + Millionaire Ball (1-5)
+// draw game, launched 2026-02-22. Not a digit game — no straight/box/heat
+// features apply. digits = 5 dash-separated numbers 1-58; fireball column
+// holds the Millionaire Ball (1-5) for these rows.
+let M4L_INFO = { rowCount: 0, dateStart: '', dateEnd: '', rows: [] };
 
 const LUCKY = new Set(['777','111','222','333','444','555','666','888','999','000','123','321','456','654','789','987','369','147','258','007','911']);
 const UGLY_EXAMPLES = new Set(['068','379','593','847','936','192','384','573']);
@@ -894,6 +901,16 @@ async function loadLiveData() {
       dateStart: p4Rows.length ? p4Rows[0].date : '',
       dateEnd: p4Rows.length ? p4Rows[p4Rows.length - 1].date : '',
     };
+    const m4lRows = rows
+      .filter(r => r.game === 'M4L' && /^\d{1,2}(-\d{1,2}){4}$/.test(r.digits) && /^[1-5]$/.test(r.fireball))
+      .map(r => ({ date: r.date, numbers: r.digits.split('-').map(Number), mb: r.fireball }))
+      .sort((a, b) => compareIso(b.date, a.date));
+    M4L_INFO = {
+      rowCount: m4lRows.length,
+      dateStart: m4lRows.length ? m4lRows[m4lRows.length - 1].date : '',
+      dateEnd: m4lRows.length ? m4lRows[0].date : '',
+      rows: m4lRows,
+    };
     state.dataSource = { ok: true, rowCount: rows.length, loadedAt: new Date().toISOString() };
     return true;
   } catch (err) {
@@ -912,6 +929,7 @@ async function refreshLiveData() {
   renderDataPane();
   renderTopSummary();
   renderP4Pane();
+  renderM4LPane();
   runEngine('eve');
   runEngine('mid');
   runEngine('both');
@@ -991,6 +1009,71 @@ function renderOddsCalculator4() {
     '<div class="card"><div class="k">Box odds (' + boxLabel + ')</div><div class="v">' + (box ? '1 in ' + fmt(box.oneIn) : 'n/a') + '</div><div class="small">' + (box ? boxLabel : 'All 4 digits the same has no box option - straight only.') + '</div></div>' +
     '<div class="card"><div class="k">Coverage: ' + n + ' combos</div><div class="v">1 in ' + fmt(coverage.exactMatchOneIn) + '</div><div class="small">$' + coverage.totalCost + ' for ' + coverage.exactMatchPercent + '% exact-match chance</div></div>';
 }
+
+// --- MILLIONAIRE FOR LIFE (M4L) TAB ---
+// M4L is a 5-of-58 + Millionaire Ball (1-5) nightly jackpot game, first
+// drawn 2026-02-22 - a fundamentally different game shape than Pick 3/4
+// (numbers instead of digits, no repeats, a bonus ball instead of a
+// Fireball digit). It gets no straight/box/heat/frequency features: those
+// concepts don't apply to a 58-number pick game, and with only a few months
+// of draws there isn't enough history for any frequency claim to be
+// meaningful anyway. This tab is a results log plus the official fixed
+// odds table only.
+const M4L_ODDS_TABLE = [
+  { tier: '5 + Millionaire Ball', odds: '1 in 22,910,580', prize: '$1,000,000 per year for life', note: 'Top prize. Cash option: $18,000,000.' },
+  { tier: '5', odds: '1 in 5,727,645', prize: '$100,000 per year for life', note: 'Second prize. Cash option: $2,200,000.' },
+  { tier: '4 + Millionaire Ball', odds: '1 in 86,455', prize: '$7,500', note: '' },
+  { tier: '4', odds: '1 in 21,614', prize: '$500', note: '' },
+  { tier: '3 + Millionaire Ball', odds: '1 in 1,663', prize: '$250', note: '' },
+  { tier: '3', odds: '1 in 416', prize: '$50', note: '' },
+  { tier: '2 + Millionaire Ball', odds: '1 in 98', prize: '$25', note: '' },
+  { tier: '2', odds: '1 in 24.44', prize: '$8', note: '' },
+  { tier: '1 + Millionaire Ball', odds: '1 in 16', prize: '$8', note: '' },
+];
+
+function renderM4LPane() {
+  const has = M4L_INFO.rowCount > 0;
+  const pane = document.getElementById('pane-m4l');
+  if (!pane) return;
+  const oddsRows = M4L_ODDS_TABLE.map(t =>
+    `<tr><td>${t.tier}</td><td>${t.odds}</td><td>${t.prize}</td><td class="small">${t.note}</td></tr>`
+  ).join('');
+  const logRows = has ? M4L_INFO.rows.map(r =>
+    `<tr><td>${r.date}</td><td class="mono">${r.numbers.map(n => String(n).padStart(2,'0')).join(' - ')}</td><td class="mono">MB: ${r.mb}</td></tr>`
+  ).join('') : '';
+  pane.innerHTML = `
+    <div class="card">
+      <div class="sectionTitle">Millionaire for Life — Odds &amp; Prizes</div>
+      <div class="notice">$5 per play. Pick 5 numbers from 1-58 plus one Millionaire Ball from 1-5. These are the New Jersey Lottery's official fixed odds and prize tiers - they do not depend on drawing history, so they're shown as-is rather than computed from this app's data.</div>
+      <div style="overflow-x:auto;margin-top:12px;">
+        <table>
+          <thead><tr><th>Match</th><th>Odds</th><th>Prize</th><th>Notes</th></tr></thead>
+          <tbody>${oddsRows}</tbody>
+        </table>
+      </div>
+      <div class="small" style="margin-top:10px;color:#9ee6ff;">Overall odds of winning any prize: approximately 1 in 8.47.</div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="sectionTitle">Millionaire for Life — Results Log</div>
+      ${has ? `
+        <div class="notice good">${fmt(M4L_INFO.rowCount)} draw${M4L_INFO.rowCount === 1 ? '' : 's'} on file, ${M4L_INFO.dateStart} to ${M4L_INFO.dateEnd}.</div>
+        <div class="notice warn" style="margin-top:8px;">Too few draws exist yet for meaningful frequency, "draws since last hit," or hot/cold analysis (that takes many thousands of draws, as with Pick 3/4). This log intentionally shows raw results only — no frequency claims.</div>
+        <div style="overflow-x:auto;margin-top:12px;max-height:420px;overflow-y:auto;">
+          <table>
+            <thead><tr><th>Date</th><th>Numbers</th><th>Millionaire Ball</th></tr></thead>
+            <tbody>${logRows}</tbody>
+          </table>
+        </div>
+      ` : `
+        <div class="notice warn">
+          <strong>History building since February 22, 2026.</strong> Millionaire for Life is brand new to New Jersey, and this app's canonical dataset (<span class="mono">data/nj_numbers_canonical.csv</span>) doesn't yet include any M4L rows. Once the daily updater begins appending M4L draws (<span class="mono">game=M4L</span>, five dash-separated numbers in <span class="mono">digits</span>, the Millionaire Ball in <span class="mono">fireball</span>), this results log will populate automatically - no app changes needed. With this few draws, frequency/heat analysis would not be meaningful even once data exists, so this tab intentionally sticks to a plain results log plus the fixed odds table above.
+        </div>
+      `}
+      <div class="small" style="margin-top:10px;color:#9ee6ff;">Data source: ${has ? 'live CSV' : (state.dataSource && state.dataSource.ok ? 'live CSV (0 M4L rows found)' : 'built-in snapshot')}.</div>
+    </div>`;
+}
+
 function bulkImportOfficialResults() {
   const area = document.getElementById('bulkResults');
   const raw = area ? area.value.trim() : '';
@@ -1192,6 +1275,7 @@ async function init() {
   renderTracker();
   renderDataPane();
   renderP4Pane();
+  renderM4LPane();
   initTabs();
   runEngine('eve');
   runEngine('mid');
@@ -1203,6 +1287,7 @@ async function init() {
   renderTopSummary();
   renderDataPane();
   renderP4Pane();
+  renderM4LPane();
   runEngine('eve');
   runEngine('mid');
   runEngine('both');
