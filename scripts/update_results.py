@@ -1,42 +1,33 @@
 #!/usr/bin/env python3
 """
-Daily NJ Lottery results updater — Pick 3 and Pick 4 (midday + evening).
+Daily NJ lottery results updater — Pick 3 & Pick 4, midday & evening.
 
-Runs automatically via GitHub Actions (see .github/workflows/update-results.yml).
-Fetches the latest results from the NJ Lottery website's draw-games API,
-validates them, and appends new rows to data/nj_numbers_canonical.csv.
+Source: LotteryUSA's NJ results archive pages (the official njlottery.com
+API blocks requests from GitHub's servers with HTTP 403, verified Jul 2026).
+Each archive page lists roughly the last year of draws, so the first run
+also backfills recent history. Requests are minimal: 4 pages, twice a day.
 
-Safety rules:
-- NEVER modifies or deletes existing rows (append-only).
-- Validates every digit (0-9) before writing.
-- Exits with an error (failing the workflow loudly) if the source
-  can't be read or returns malformed data, rather than writing junk.
-
-NOTE FOR SETUP: The NJ Lottery API endpoint or response format may change.
-If this script starts failing, ask Replit/Claude to inspect
-https://www.njlottery.com/en-us/drawgames/pick3.html network requests
-and update API_URL / parse_draws() accordingly.
+Safety rules unchanged: append-only, every digit validated, fails loudly
+rather than writing junk. Results are unofficial — the app already tells
+users to verify with the official NJ Lottery.
 """
 
 import csv
-import json
+import re
 import sys
 import urllib.request
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 CSV_PATH = Path(__file__).resolve().parent.parent / "data" / "nj_numbers_canonical.csv"
 
-# NJ Lottery draw-games API (used by their own website).
-API_URL = (
-    "https://www.njlottery.com/api/v2/draw-games/draws"
-    "?game-names={game}&status=CLOSED&size=14&order-by=DRAW_TIME&order-direction=DESC"
-)
-
-GAMES = {
-    "Pick 3": {"code": "P3", "digits": 3},
-    "Pick 4": {"code": "P4", "digits": 4},
-}
+SOURCES = [
+    # (game_code, draw_type, n_digits, url)
+    ("P3", "MID", 3, "https://www.lotteryusa.com/new-jersey/midday-pick-3/year"),
+    ("P3", "EVE", 3, "https://www.lotteryusa.com/new-jersey/pick-3/year"),
+    ("P4", "MID", 4, "https://www.lotteryusa.com/new-jersey/midday-pick-4/year"),
+    ("P4", "EVE", 4, "https://www.lotteryusa.com/new-jersey/pick-4/year"),
+]
 
 HEADERS = {
     "User-Agent": (
@@ -44,47 +35,60 @@ HEADERS = {
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/126.0.0.0 Safari/537.36"
     ),
-    "Accept": "application/json, text/plain, */*",
+    "Accept": "text/html,application/xhtml+xml",
     "Accept-Language": "en-US,en;q=0.9",
-    "Referer": "https://www.njlottery.com/en-us/drawgames/pick3.html",
-    "Origin": "https://www.njlottery.com",
 }
 
+MONTHS = {
+    "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
+    "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
+}
 
-def fetch_json(url: str) -> dict:
+DATE_RE = re.compile(
+    r"(?:Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\s*,\s*"
+    r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+"
+    r"(\d{1,2})\s*,\s*(\d{4})",
+    re.IGNORECASE,
+)
+
+
+def fetch_text(url: str) -> str:
     req = urllib.request.Request(url, headers=HEADERS)
     with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+        html = resp.read().decode("utf-8", errors="replace")
+    # strip tags/scripts so we can parse plain text
+    html = re.sub(r"<script.*?</script>", " ", html, flags=re.S | re.I)
+    html = re.sub(r"<style.*?</style>", " ", html, flags=re.S | re.I)
+    text = re.sub(r"<[^>]+>", " ", html)
+    return re.sub(r"\s+", " ", text)
 
 
-def parse_draws(payload: dict, game_name: str, n_digits: int):
-    """Yield (date_iso, draw_MID_or_EVE, digits_dashed, fireball) tuples."""
-    for item in payload.get("draws", []):
-        # Draw time: epoch ms. NJ midday ~12:59 ET, evening ~22:57 ET.
-        ts = item.get("drawTime") or item.get("draw_time")
-        if ts is None:
+def parse_page(text: str, n_digits: int):
+    """Yield (date_iso, digits_dashed, fireball) from a results page."""
+    matches = list(DATE_RE.finditer(text))
+    for i, m in enumerate(matches):
+        mon = MONTHS[m.group(1).lower()[:3]]
+        day, year = int(m.group(2)), int(m.group(3))
+        try:
+            date_iso = datetime(year, mon, day).date().isoformat()
+        except ValueError:
             continue
-        dt = datetime.utcfromtimestamp(int(ts) / 1000) - timedelta(hours=5)  # approx ET
-        draw_type = "MID" if dt.hour < 17 else "EVE"
-
-        results = item.get("results") or []
-        if not results:
-            continue
-        primary = results[0].get("primary") or []
-        digits = [str(d) for d in primary[:n_digits]]
-        fireball = ""
-        secondary = results[0].get("secondary") or []
-        if secondary:
-            fireball = str(secondary[0])
-        elif len(primary) > n_digits:
-            fireball = str(primary[n_digits])
-
-        if len(digits) != n_digits or not all(d.isdigit() and len(d) == 1 for d in digits):
-            raise ValueError(f"Malformed {game_name} draw on {dt.date()}: {primary}")
-        if fireball and not (fireball.isdigit() and len(fireball) == 1):
-            fireball = ""
-
-        yield dt.date().isoformat(), draw_type, "-".join(digits), fireball
+        end = matches[i + 1].start() if i + 1 < len(matches) else min(len(text), m.end() + 400)
+        chunk = text[m.end():end]
+        # keep only what's before the prize amount, so prize digits don't leak in
+        chunk = re.split(r"Top\s+prize", chunk, flags=re.I)[0]
+        # split off the fireball
+        fb = ""
+        fb_split = re.split(r"\bFB\b|\bFireball\b", chunk, maxsplit=1, flags=re.I)
+        main_part = fb_split[0]
+        if len(fb_split) > 1:
+            fb_digits = re.findall(r"\d", fb_split[1])
+            if fb_digits:
+                fb = fb_digits[0]
+        digits = re.findall(r"\d", main_part)
+        if len(digits) != n_digits:
+            continue  # month headers, ads, or malformed rows land here
+        yield date_iso, "-".join(digits), fb
 
 
 def main() -> int:
@@ -95,41 +99,45 @@ def main() -> int:
     existing = set()
     with open(CSV_PATH, newline="") as f:
         reader = csv.reader(f)
-        header = next(reader)
+        next(reader)  # header
         for row in reader:
             if len(row) >= 3:
-                existing.add((row[0], row[1], row[2]))  # (game, date, draw)
+                existing.add((row[0], row[1], row[2]))
 
-    new_rows = []
-    for game_name, cfg in GAMES.items():
-        url = API_URL.format(game=urllib.parse.quote(game_name))
+    new_rows, total_seen = [], 0
+    for code, draw_type, n_digits, url in SOURCES:
         try:
-            payload = fetch_json(url)
+            text = fetch_text(url)
         except Exception as exc:
-            print(f"ERROR fetching {game_name}: {exc}", file=sys.stderr)
+            print(f"ERROR fetching {code} {draw_type}: {exc}", file=sys.stderr)
             return 1
-        for date_iso, draw_type, digits, fireball in parse_draws(
-            payload, game_name, cfg["digits"]
-        ):
-            key = (cfg["code"], date_iso, draw_type)
+        found = list(parse_page(text, n_digits))
+        if not found:
+            print(f"ERROR: parsed zero draws for {code} {draw_type} — "
+                  f"page format may have changed", file=sys.stderr)
+            return 1
+        total_seen += len(found)
+        for date_iso, digits, fb in found:
+            key = (code, date_iso, draw_type)
             if key not in existing:
-                new_rows.append([cfg["code"], date_iso, draw_type, digits, fireball, ""])
+                new_rows.append([code, date_iso, draw_type, digits, fb, ""])
                 existing.add(key)
 
     if not new_rows:
-        print("No new draws found — already up to date.")
+        print(f"Checked {total_seen} draws — already up to date.")
         return 0
 
     new_rows.sort(key=lambda r: (r[0], r[1], r[2]))
     with open(CSV_PATH, "a", newline="") as f:
         csv.writer(f).writerows(new_rows)
 
-    for r in new_rows:
+    for r in new_rows[:15]:
         print(f"Added: {r[0]} {r[1]} {r[2]} {r[3]}" + (f" FB:{r[4]}" if r[4] else ""))
+    if len(new_rows) > 15:
+        print(f"...and {len(new_rows) - 15} more")
     print(f"{len(new_rows)} new draw(s) appended.")
     return 0
 
 
 if __name__ == "__main__":
-    import urllib.parse  # noqa: E402  (used in main)
     sys.exit(main())
