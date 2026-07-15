@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d1822">
+<meta name="description" content="NJ Pick 3 and Pick 4 monthly frequency history with honest expected-vs-actual comparison. Statistics tool — drawings are random and history does not predict results.">
+<title>Monthly Heat · NJ Pick 3 / Pick 4 History</title>
+<style>
+  :root{
+    --bg:#0d1822; --panel:#13202d; --panel2:#0f1a25; --line:#1f3242;
+    --ink:#dce8f2; --dim:#7e93a6; --gold:#e8b64c; --heat:#e8734c;
+    --cool:#4c9de8; --ok:#57c48a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--ink);
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:18px 14px calc(24px + env(safe-area-inset-bottom));}
+  .wrap{max-width:860px; margin:0 auto;}
+  a{color:var(--cool); text-decoration:none;}
+  a:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
+
+  header{margin-bottom:18px;}
+  .back{font-size:14px; color:var(--dim);}
+  h1{font-size:26px; letter-spacing:.4px; margin-top:6px;}
+  h1 .accent{color:var(--gold);}
+  .sub{color:var(--dim); font-size:14px; margin-top:4px; max-width:60ch;}
+
+  .controls{display:flex; flex-wrap:wrap; gap:10px; margin:18px 0 6px;}
+  .ctl{flex:1 1 140px; min-width:140px;}
+  .ctl label{display:block; font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--dim); margin-bottom:5px;}
+  select{width:100%; min-height:44px; background:var(--panel); color:var(--ink);
+    border:1px solid var(--line); border-radius:8px; padding:10px 12px; font-size:16px;}
+
+  .toggle{display:flex; gap:0; margin:12px 0 4px; border:1px solid var(--line);
+    border-radius:8px; overflow:hidden; width:fit-content;}
+  .toggle button{min-height:44px; padding:10px 20px; font-size:15px; border:0;
+    background:var(--panel); color:var(--dim); cursor:pointer;}
+  .toggle button[aria-pressed="true"]{background:var(--gold); color:#1a1305; font-weight:600;}
+
+  .meta{color:var(--dim); font-size:13px; margin:10px 2px 14px;}
+  .meta b{color:var(--ink); font-weight:600;}
+
+  table{width:100%; border-collapse:collapse; background:var(--panel);
+    border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+  thead th{font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);
+    text-align:left; padding:10px 10px; background:var(--panel2); border-bottom:1px solid var(--line);}
+  tbody td{padding:10px 10px; border-bottom:1px solid var(--line); font-size:15px; vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:0;}
+  .rank{color:var(--dim); width:2.2em;}
+  .combo{font-variant-numeric:tabular-nums; font-weight:700; letter-spacing:.14em; font-size:17px;}
+  .hits{font-variant-numeric:tabular-nums;}
+  .last{color:var(--dim); font-size:13px; white-space:nowrap;}
+  .dbl{display:inline-block; margin-left:6px; font-size:10px; letter-spacing:.08em;
+    color:#1a1305; background:var(--gold); border-radius:4px; padding:1px 5px; vertical-align:2px;}
+
+  /* signature: honest heat bar with an expected-by-chance marker */
+  .bar{position:relative; height:12px; background:var(--panel2); border:1px solid var(--line);
+    border-radius:6px; min-width:120px;}
+  .bar .fill{position:absolute; inset:1px auto 1px 1px; border-radius:5px;
+    background:linear-gradient(90deg, var(--cool), var(--heat));}
+  .bar .exp{position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--ok);}
+  .barnote{font-size:11px; color:var(--dim); margin-top:3px;}
+  .barnote .chip{display:inline-block; width:8px; height:8px; border-radius:2px;
+    background:var(--ok); vertical-align:-1px; margin-right:4px;}
+
+  .empty,.error{background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:22px 16px; color:var(--dim); margin-top:10px;}
+  .error b{color:var(--heat);}
+
+  .honest{margin:16px 0; padding:12px 14px; background:var(--panel2);
+    border-left:3px solid var(--gold); border-radius:0 8px 8px 0;
+    color:var(--dim); font-size:13.5px;}
+  .honest b{color:var(--ink);}
+
+  footer{margin-top:22px; padding-top:14px; border-top:1px solid var(--line);
+    color:var(--dim); font-size:12.5px; line-height:1.6;}
+  @media (max-width:560px){
+    body{padding:14px 10px calc(20px + env(safe-area-inset-bottom));}
+    h1{font-size:22px;}
+    thead th:nth-child(5), tbody td:nth-child(5){display:none;} /* hide last-hit on tiny screens */
+    tbody td{padding:9px 7px;}
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .bar .fill{transition:width .5s ease;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="back" href="./">← Back to the main engine</a>
+    <h1>Monthly <span class="accent">Heat</span></h1>
+    <p class="sub">Every combo that hit in your chosen month, across the full history — with what
+    pure chance predicts shown right beside it, so you always see both.</p>
+  </header>
+
+  <div class="controls">
+    <div class="ctl"><label for="game">Game</label>
+      <select id="game"><option value="P3">Pick 3</option><option value="P4">Pick 4</option></select></div>
+    <div class="ctl"><label for="month">Month</label><select id="month"></select></div>
+    <div class="ctl"><label for="drawf">Drawing</label>
+      <select id="drawf"><option value="ALL">Midday + Evening</option>
+      <option value="MID">Midday only</option><option value="EVE">Evening only</option></select></div>
+  </div>
+
+  <div class="toggle" role="group" aria-label="View">
+    <button id="btnExact" aria-pressed="true">Exact order</button>
+    <button id="btnBox" aria-pressed="false">Any order (box)</button>
+  </div>
+
+  <p class="meta" id="meta"></p>
+  <div id="out"></div>
+
+  <div class="honest" id="honest"></div>
+
+  <footer>
+    <b>Play responsibly.</b> This is a statistics and history tool. Every drawing is random;
+    a combo that ran hot in past Julys is exactly as likely as any other combo in the next draw
+    (1 in 1,000 for Pick 3, 1 in 10,000 for Pick 4). Historical frequency does not predict future
+    results, and this page will always show you the chance-expected count next to the actual one.
+    Must be 18+ to play the New Jersey Lottery. If gambling stops being fun, call or text
+    1-800-GAMBLER (1-800-426-2537).
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  var state={rows:null, game:"P3", month:(new Date()).getMonth()+1, drawf:"ALL", view:"exact"};
+
+  var mSel=document.getElementById("month");
+  MONTHS.forEach(function(m,i){
+    var o=document.createElement("option"); o.value=String(i+1); o.textContent=m; mSel.appendChild(o);
+  });
+  mSel.value=String(state.month);
+
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];});}
+
+  function parseCSV(text){
+    var out=[], lines=text.split(/\r?\n/);
+    for(var i=1;i<lines.length;i++){
+      var L=lines[i]; if(!L) continue;
+      var p=L.split(",");
+      if(p.length<4) continue;
+      // game,date,draw,digits,fireball,prize
+      var digits=(p[3]||"").replace(/-/g,"").trim();
+      if(!/^\d+$/.test(digits)) continue;
+      out.push({game:p[0].trim(), date:p[1].trim(), draw:p[2].trim(), n:digits});
+    }
+    return out;
+  }
+
+  function famKey(n){return n.split("").sort().join("");}
+  function isRepeatFamily(n){ // any repeated digit => fewer box ways => bigger box payout
+    var s=n.split("").sort(); 
+    for(var i=1;i<s.length;i++) if(s[i]===s[i-1]) return true;
+    return false;
+  }
+
+  function compute(){
+    var nd = state.game==="P3" ? 3 : 4;
+    var space = state.game==="P3" ? 1000 : 10000;
+    var sel = state.rows.filter(function(r){
+      return r.game===state.game && r.n.length===nd &&
+             parseInt(r.date.slice(5,7),10)===state.month &&
+             (state.drawf==="ALL" || r.draw===state.drawf);
+    });
+    var draws=sel.length;
+    var counts={}, last={};
+    sel.forEach(function(r){
+      var k = state.view==="exact" ? r.n : famKey(r.n);
+      counts[k]=(counts[k]||0)+1;
+      if(!last[k] || r.date>last[k]) last[k]=r.date;
+    });
+    var arr=Object.keys(counts).map(function(k){return {k:k,c:counts[k],last:last[k]};});
+    arr.sort(function(a,b){return b.c-a.c || (a.k<b.k?-1:1);});
+    var top=arr.slice(0,20);
+
+    // expected by chance for this view
+    var expected;
+    if(state.view==="exact"){ expected = draws/space; }
+    else {
+      // expected varies by family size; show per-row expected instead
+      expected = null;
+    }
+    return {draws:draws, top:top, expected:expected, space:space, nd:nd, totalDistinct:arr.length};
+  }
+
+  function boxWays(fam){ // number of distinct orderings of the multiset
+    var counts={}; fam.split("").forEach(function(d){counts[d]=(counts[d]||0)+1;});
+    var n=fam.length, num=1; for(var i=2;i<=n;i++) num*=i;
+    Object.keys(counts).forEach(function(d){var f=1;for(var i=2;i<=counts[d];i++)f*=i; num/=f;});
+    return num;
+  }
+
+  function render(){
+    var meta=document.getElementById("meta"), out=document.getElementById("out"),
+        honest=document.getElementById("honest");
+    if(!state.rows){out.innerHTML='<div class="empty">Loading draw history…</div>'; return;}
+    var res=compute();
+    var monthName=MONTHS[state.month-1];
+
+    if(res.draws===0){
+      meta.textContent="";
+      out.innerHTML='<div class="empty">No '+esc(state.game==="P3"?"Pick 3":"Pick 4")+
+        ' draws recorded for '+esc(monthName)+' yet. History is building automatically — check back after the next update.</div>';
+      honest.innerHTML="";
+      return;
+    }
+
+    meta.innerHTML='<b>'+res.draws.toLocaleString()+'</b> '+esc(monthName)+' draws in the dataset · '+
+      '<b>'+res.totalDistinct.toLocaleString()+'</b> distinct '+(state.view==="exact"?"combos":"digit groups")+' hit at least once';
+
+    var maxC=res.top.length?res.top[0].c:1;
+    var html='<table><thead><tr><th>#</th><th>'+(state.view==="exact"?"Combo":"Digits")+
+      '</th><th>Hits</th><th>Hits vs. chance</th><th>Last hit</th></tr></thead><tbody>';
+    res.top.forEach(function(row,i){
+      var exp = state.view==="exact" ? res.draws/res.space
+                                     : res.draws*boxWays(row.k)/res.space;
+      var w = Math.max(4, Math.round(100*row.c/maxC));
+      var expPct = Math.min(98, Math.round(100*exp/maxC));
+      var label = state.view==="exact" ? row.k : row.k.split("").join("-");
+      var dbl = (state.view!=="exact" && isRepeatFamily(row.k)) ||
+                (state.view==="exact" && isRepeatFamily(row.k));
+      html+='<tr><td class="rank">'+(i+1)+'</td>'+
+        '<td class="combo">'+esc(label)+(dbl?'<span class="dbl">double</span>':'')+'</td>'+
+        '<td class="hits">'+row.c+' <span style="color:var(--dim)">/ '+exp.toFixed(1)+' expected</span></td>'+
+        '<td><div class="bar"><div class="fill" style="width:'+w+'%"></div>'+
+        '<div class="exp" style="left:'+expPct+'%" title="expected by chance"></div></div></td>'+
+        '<td class="last">'+esc(row.last)+'</td></tr>';
+    });
+    html+='</tbody></table><p class="barnote"><span class="chip"></span>green marker = hits pure chance predicts for this month. Bars past the marker ran hot historically; that heat carries no forward meaning.</p>';
+    out.innerHTML=html;
+
+    var perCombo = state.view==="exact" ? (res.draws/res.space).toFixed(1) : null;
+    honest.innerHTML = state.view==="exact"
+      ? '<b>Read this honestly:</b> with '+res.draws.toLocaleString()+' '+esc(monthName)+
+        ' draws, chance alone gives every one of the '+res.space.toLocaleString()+
+        ' possible combos about <b>'+perCombo+'</b> hits. Leaders exceeding that are the normal lumps of randomness — the same list rebuilt next year will have new names on it.'
+      : '<b>Read this honestly:</b> groups with more orderings (all-different digits) are expected to hit more often in any-order view — that is arithmetic, not heat. Doubles hit less often but pay more per box hit because they have fewer ways.';
+  }
+
+  function setView(v){
+    state.view=v;
+    document.getElementById("btnExact").setAttribute("aria-pressed", v==="exact"?"true":"false");
+    document.getElementById("btnBox").setAttribute("aria-pressed", v==="box"?"true":"false");
+    render();
+  }
+  document.getElementById("btnExact").addEventListener("click",function(){setView("exact");});
+  document.getElementById("btnBox").addEventListener("click",function(){setView("box");});
+  document.getElementById("game").addEventListener("change",function(e){state.game=e.target.value; render();});
+  document.getElementById("month").addEventListener("change",function(e){state.month=parseInt(e.target.value,10); render();});
+  document.getElementById("drawf").addEventListener("change",function(e){state.drawf=e.target.value; render();});
+
+  render();
+  fetch("data/nj_numbers_canonical.csv",{cache:"no-store"})
+    .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.text(); })
+    .then(function(t){ state.rows=parseCSV(t); render(); })
+    .catch(function(err){
+      document.getElementById("out").innerHTML=
+        '<div class="error"><b>Could not load the draw history.</b> '+
+        'The data file data/nj_numbers_canonical.csv did not load ('+esc(err.message)+'). '+
+        'If you opened this page as a local file, use the hosted site instead.</div>';
+    });
+})();
+</script>
+</body>
+</html>
