@@ -2,11 +2,10 @@ name: Update NJ lottery results
 
 on:
   schedule:
-    # ~11:30 PM and ~1:30 PM Eastern, after evening and midday drawings
-    - cron: "30 3 * * *"
-    - cron: "30 18 * * *"
+    # ~1:19 PM and ~11:17 PM Eastern, ~20 minutes after midday and evening drawings
+    - cron: "19 17 * * *"
+    - cron: "17 3 * * *"
   workflow_dispatch: {}   # lets you also run it manually with one click
-
 permissions:
   contents: write
 
