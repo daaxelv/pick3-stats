@@ -153,7 +153,9 @@ const state = {
   loggedPlays:[],
   winningDraws:[],
   manualOfficialUpdates: loadManualUpdates(),
-  dataSource: null
+  dataSource: null,
+  _csvSignature: '',
+  _checkingData: false,
 };
 
 function loadManualUpdates() {
@@ -960,6 +962,7 @@ async function loadLiveData() {
       rows: m4lRows,
     };
     state.dataSource = { ok: true, rowCount: rows.length, loadedAt: new Date().toISOString() };
+    if (!state._csvSignature) state._csvSignature = String(rows.length);
     return true;
   } catch (err) {
     ENGINE_DATA = FALLBACK_ENGINE_DATA;
@@ -1120,7 +1123,421 @@ function renderM4LPane() {
       `}
       <div class="small" style="margin-top:10px;color:#9ee6ff;">Data source: ${has ? 'live CSV' : (state.dataSource && state.dataSource.ok ? 'live CSV (0 M4L rows found)' : 'built-in snapshot')}.</div>
     </div>`;
+  // Preserve the simulator card across re-renders (its state lives in the DOM)
+  var _sc = document.getElementById('m4l-sim-card');
+  if (_sc) pane.appendChild(_sc);
+  else { var _se = document.createElement('div'); _se.innerHTML = m4lSimCardHTML(); pane.appendChild(_se.firstElementChild); }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUTO-REFRESH POLLER
+// Polls data/nj_numbers_canonical.csv every 5 minutes and on page focus /
+// visibility change. When a new draw row is detected (row count changed),
+// reloads all data, re-runs all three engines with their current settings
+// (including the Exclude-recent-winners toggle state), and shows a dismissible
+// green banner. Pick 3/4 logic is untouched — this is purely a data-freshness
+// layer on top of the existing loadLiveData() + runEngine() stack.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function _arDismiss() {
+  var b = document.getElementById('__arBanner__');
+  if (b) b.style.transform = 'translateY(-100%)';
+}
+function showAutoRefreshBanner(msg) {
+  var b = document.getElementById('__arBanner__');
+  if (!b) {
+    b = document.createElement('div');
+    b.id = '__arBanner__';
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:10000;' +
+      'background:#102638;border-bottom:2px solid var(--green);' +
+      'color:var(--green);padding:10px 20px;display:flex;align-items:center;' +
+      'justify-content:space-between;font-size:14px;font-weight:700;' +
+      'font-family:Arial,sans-serif;transform:translateY(-100%);' +
+      'transition:transform .35s;box-shadow:0 3px 12px rgba(0,0,0,.5);';
+    document.body.appendChild(b);
+  }
+  b.innerHTML =
+    '<span>&#x2713; ' + msg + '</span>' +
+    '<button onclick="_arDismiss()" ' +
+    'style="background:transparent;border:none;color:var(--green);font-size:20px;' +
+    'cursor:pointer;padding:0 0 0 16px;min-height:44px;line-height:1;">&#x2715;</button>';
+  b.style.transform = 'translateY(0)';
+  clearTimeout(b._t);
+  b._t = setTimeout(function() { b.style.transform = 'translateY(-100%)'; }, 9000);
+}
+
+async function _pollCsvOnce() {
+  if (state._checkingData) return;
+  state._checkingData = true;
+  try {
+    var res = await fetch('data/nj_numbers_canonical.csv', { cache: 'no-store' });
+    if (!res.ok) return;
+    var text = await res.text();
+    // Lightweight freshness signal: row count.  The CSV is append-only so
+    // an increase always means new draws; same count means no change.
+    var sig = String(text.trimEnd().split('\n').length);
+    if (!state._csvSignature) { state._csvSignature = sig; return; } // first poll: set baseline
+    if (sig === state._csvSignature) return; // no change
+    state._csvSignature = sig;
+
+    // Parse and rebuild all derived state identically to loadLiveData()
+    var rows = parseCanonicalCsv(text);
+    if (!rows.length) return;
+    ENGINE_DATA = buildEngineDataFromRows(rows);
+    PAYOUT_STATS = buildPayoutStatsFromRows(rows);
+    var p4r = rows.filter(function(r){ return r.game==='P4' && /^\d-\d-\d-\d$/.test(r.digits); })
+                  .sort(function(a,b){ return compareIso(a.date,b.date); });
+    P4_INFO = { rowCount: p4r.length, dateStart: p4r.length?p4r[0].date:'', dateEnd: p4r.length?p4r[p4r.length-1].date:'' };
+    var m4lr = rows.filter(function(r){ return r.game==='M4L' && /^\d{1,2}(-\d{1,2}){4}$/.test(r.digits) && /^[1-5]$/.test(r.fireball); })
+                   .map(function(r){ return { date:r.date, numbers:r.digits.split('-').map(Number), mb:r.fireball }; })
+                   .sort(function(a,b){ return compareIso(b.date,a.date); });
+    M4L_INFO = { rowCount: m4lr.length, dateStart: m4lr.length?m4lr[m4lr.length-1].date:'', dateEnd: m4lr.length?m4lr[0].date:'', rows: m4lr };
+    state.dataSource = { ok: true, rowCount: rows.length, loadedAt: new Date().toISOString() };
+
+    // Re-run the three P3/P4 engines with whatever settings the user currently has.
+    // runEngine() reads agents / mode / exclude-recent toggle directly from the DOM,
+    // so this automatically honours the Exclude-recent-winners toggle state.
+    ['eve','mid','both'].forEach(function(k){ runEngine(k); });
+    renderTopSummary(); renderDataPane(); renderP4Pane(); renderM4LPane();
+
+    // Banner: cite the most recent draw that arrived
+    var latest = null;
+    for (var _i = rows.length - 1; _i >= 0; _i--) {
+      var _r = rows[_i];
+      if (_r.game === 'P3' || _r.game === 'P4' || _r.game === 'M4L') { latest = _r; break; }
+    }
+    var label = latest ? (latest.date + (latest.draw ? ' ' + latest.draw : '') + ' (' + latest.game + ')') : 'today';
+    showAutoRefreshBanner('New results loaded \u2014 rankings updated ' + label + '.');
+  } catch(e) { /* network hiccup — silently skip */ }
+  finally { state._checkingData = false; }
+}
+
+function startAutoRefreshPoller() {
+  // 5-minute interval poll
+  setInterval(_pollCsvOnce, 5 * 60 * 1000);
+  // Also check when the user returns to the tab (after switching away or locking screen)
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') _pollCsvOnce();
+  });
+  // And on window focus (switching back from another app)
+  window.addEventListener('focus', _pollCsvOnce);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// M4L VIRTUAL CROWD SIMULATOR
+//
+// Models realistic human number-selection bias for the 5-of-58 + MB game:
+//  • ~85 % "human-biased" tickets: heavy overweight on 1-31 (birthday effect),
+//    multiples of 5 (round numbers), multiples of 7 (lucky 7), and culturally
+//    lucky single numbers (7, 11, 13, 21, 28, 31).
+//  • ~15 % true uniform quick-picks.
+//
+// The simulator is NOT a prediction tool.  Every real ticket has identical
+// fixed odds regardless of number choice.  The only thing that varies is
+// prize SHARING when multiple tickets hold the same combination.
+//
+// Deliberately omitted: hot/cold frequency analysis.  With ~140 draws on file
+// this dataset is far too small for any per-number frequency claim to be
+// statistically meaningful — we say so in the UI and show no such stats.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+var _m4lW = null;    // bias weights [index 0 unused; 1-58]
+var _m4lCum = null;  // cumulative weights for O(log n) sampling
+var _m4lTotW = 0;
+var _m4lSample = null;  // last simulated tickets array
+var _m4lCrowdSz = 1000000;
+var _m4lMargFreqs = null;
+var M4L_SAMPLE_N = 15000; // tickets generated for distribution + mock-draw
+
+var M4L_TIER_NAMES  = ['5 + Millionaire Ball','5','4 + Millionaire Ball','4','3 + Millionaire Ball','3','2 + Millionaire Ball','2','1 + Millionaire Ball'];
+var M4L_TIER_PRIZES = ['$1,000,000/yr for life','$100,000/yr for life','$7,500','$500','$250','$50','$25','$8','$8'];
+var M4L_TIER_ODDS_D = [22910580,5727645,86455,21614,1663,416,98,24.44,16];
+var M4L_TIER_IS_LIFE = [true,true,false,false,false,false,false,false,false];
+
+function _m4lInit() {
+  if (_m4lW) return;
+  var w = [], total = 0, cum = [];
+  for (var n = 1; n <= 58; n++) {
+    var wt = 1.0;
+    if (n <= 31) wt *= 2.5;   // birthday numbers heavily overplayed
+    if (n % 5 === 0) wt *= 1.6; // round multiples (5,10,...,55)
+    if (n % 7 === 0) wt *= 1.3; // lucky-seven multiples
+    if (n===7||n===11||n===13||n===21||n===28||n===31) wt *= 1.15; // cultural bias
+    w.push(wt); total += wt; cum.push(total);
+  }
+  _m4lW = w; _m4lCum = cum; _m4lTotW = total;
+}
+
+function _m4lPick(used) {
+  // Weighted sampling without replacement (rejection-sampling on collision)
+  for (var att = 0; att < 50; att++) {
+    var r = Math.random() * _m4lTotW;
+    var lo = 0, hi = _m4lCum.length - 1;
+    while (lo < hi) { var m = (lo+hi)>>1; if (_m4lCum[m] < r) lo=m+1; else hi=m; }
+    var n = lo + 1; // 1-indexed
+    if (!used[n]) return n;
+  }
+  for (var n2 = 1; n2 <= 58; n2++) if (!used[n2]) return n2;
+  return 1;
+}
+
+function _m4lGenTkt(forceQP) {
+  var used = {}, nums = [];
+  var qp = forceQP || (Math.random() < 0.15);
+  for (var i = 0; i < 5; i++) {
+    var n;
+    if (qp) { do { n = 1+Math.floor(Math.random()*58); } while(used[n]); }
+    else     { n = _m4lPick(used); }
+    used[n] = 1; nums.push(n);
+  }
+  nums.sort(function(a,b){return a-b;});
+  return { nums: nums, mb: 1+Math.floor(Math.random()*5) };
+}
+
+function _m4lRunSample() {
+  _m4lInit();
+  var tkts = [], mf = new Array(59).fill(0);
+  for (var i = 0; i < M4L_SAMPLE_N; i++) {
+    var t = _m4lGenTkt(false);
+    tkts.push(t);
+    for (var j = 0; j < 5; j++) mf[t.nums[j]]++;
+  }
+  _m4lSample = tkts; _m4lMargFreqs = mf;
+}
+
+function _m4lTier(tNums, dArr, tMb, dMb) {
+  var hit = 0, dSet = {};
+  for (var i = 0; i < dArr.length; i++) dSet[dArr[i]] = 1;
+  for (var j = 0; j < tNums.length; j++) if (dSet[tNums[j]]) hit++;
+  var mb = (tMb === dMb);
+  if (hit===5&&mb) return 0; if (hit===5) return 1;
+  if (hit===4&&mb) return 2; if (hit===4) return 3;
+  if (hit===3&&mb) return 4; if (hit===3) return 5;
+  if (hit===2&&mb) return 6; if (hit===2) return 7;
+  if (hit===1&&mb) return 8; return -1;
+}
+
+function m4lRunSimulation() {
+  var szEl = document.getElementById('m4l-crowd-sz');
+  _m4lCrowdSz = szEl ? Number(szEl.value) : 1000000;
+  var btn = document.querySelector('#m4l-sim-card .primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Simulating…'; }
+  // Defer to next tick so the browser can repaint the disabled state
+  setTimeout(function() {
+    try {
+      _m4lRunSample();
+      var da = document.getElementById('m4l-dist-area');
+      if (da) {
+        da.innerHTML =
+          '<div class="sectionTitle" style="font-size:14px;margin-bottom:10px;">Number Popularity: Simulated vs Uniform (1/58 = 1.72%)</div>' +
+          _m4lDistChart(_m4lMargFreqs, M4L_SAMPLE_N) +
+          '<div class="small" style="margin-top:8px;color:var(--muted);">Based on ' + fmt(M4L_SAMPLE_N) +
+          ' simulated tickets (85% human-biased, 15% quick-pick), scaled to crowd of ' + fmt(_m4lCrowdSz) + '.</div>';
+        da.style.display = 'block';
+      }
+      var drawA = document.getElementById('m4l-draw-area');
+      if (drawA) drawA.style.display = 'block';
+      var tkA = document.getElementById('m4l-tickets-area');
+      if (tkA) tkA.style.display = 'block';
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Simulate crowd'; }
+    }
+  }, 10);
+}
+
+function _m4lDistChart(mf, sampleN) {
+  var maxF = 0;
+  for (var i = 1; i <= 58; i++) if (mf[i] > maxF) maxF = mf[i];
+  var uniform = sampleN / 58;
+  var uniformBarH = maxF ? Math.round((uniform / maxF) * 72) : 0;
+  var bars = '';
+  for (var n = 1; n <= 58; n++) {
+    var freq = mf[n] || 0;
+    var bh = maxF ? Math.max(2, Math.round((freq / maxF) * 72)) : 2;
+    var pct = (freq / sampleN * 100).toFixed(2);
+    var rel = (freq / uniform).toFixed(2);
+    var col = n <= 31 ? '#e8854c' : '#27d7ff';
+    var tip = 'Number ' + n + ': ' + pct + '% vs 1.72% uniform (' + rel + 'x)';
+    bars +=
+      '<div title="' + tip + '" style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:10px;cursor:help;">' +
+        '<div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:74px;">' +
+          '<div style="background:' + col + ';width:100%;height:' + bh + 'px;border-radius:2px 2px 0 0;"></div>' +
+        '</div>' +
+        '<div style="font-size:7px;color:var(--muted);margin-top:2px;transform:rotate(-55deg);transform-origin:top center;white-space:nowrap;">' + n + '</div>' +
+      '</div>';
+  }
+  return '<div style="position:relative;overflow-x:auto;">' +
+    '<div style="position:absolute;left:0;right:0;bottom:' + (uniformBarH + 26) + 'px;height:1px;background:rgba(255,255,255,0.22);pointer-events:none;" title="Uniform 1/58 baseline"></div>' +
+    '<div style="display:flex;align-items:flex-end;height:102px;gap:1px;padding-bottom:26px;">' + bars + '</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px;">' +
+      '<span class="small"><span style="display:inline-block;width:10px;height:10px;background:#e8854c;border-radius:2px;vertical-align:middle;margin-right:4px;"></span>1-31 (birthday-biased, overplayed)</span>' +
+      '<span class="small"><span style="display:inline-block;width:10px;height:10px;background:#27d7ff;border-radius:2px;vertical-align:middle;margin-right:4px;"></span>32-58 (underplayed)</span>' +
+      '<span class="small"><span style="display:inline-block;width:24px;height:1px;background:rgba(255,255,255,0.22);vertical-align:middle;margin-right:4px;"></span>Uniform 1.72% baseline</span>' +
+    '</div>';
+}
+
+function m4lRunMockDraw() {
+  if (!_m4lSample) { showToast('Run "Simulate crowd" first.', '#ff6b6b'); return; }
+  var dNums = [], used = {};
+  while (dNums.length < 5) { var nn = 1+Math.floor(Math.random()*58); if (!used[nn]) { used[nn]=1; dNums.push(nn); } }
+  dNums.sort(function(a,b){return a-b;});
+  var dMb = 1+Math.floor(Math.random()*5);
+
+  var tc = new Array(9).fill(0);
+  for (var i = 0; i < _m4lSample.length; i++) {
+    var t = _m4lSample[i];
+    var tier = _m4lTier(t.nums, dNums, t.mb, dMb);
+    if (tier >= 0) tc[tier]++;
+  }
+  var scale = _m4lCrowdSz / M4L_SAMPLE_N;
+
+  var ballsHtml = dNums.map(function(n) {
+    return '<span style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;' +
+      'background:#132434;border:2px solid var(--cyan);border-radius:50%;font-weight:700;font-size:14px;margin:2px;">' + n + '</span>';
+  }).join(' ') +
+  '<span style="display:inline-flex;width:40px;height:40px;align-items:center;justify-content:center;' +
+    'background:#1a2e05;border:2px solid var(--gold);border-radius:50%;font-weight:700;font-size:12px;margin:2px 2px 2px 10px;">MB' + dMb + '</span>';
+
+  var rows = '';
+  for (var t2 = 0; t2 < 9; t2++) {
+    var sc = Math.round(tc[t2] * scale);
+    var lifeNote = M4L_TIER_IS_LIFE[t2]
+      ? '<span class="small" style="color:var(--gold);">Each winner paid independently (prize not split)</span>'
+      : '';
+    var wStr = sc === 0 ? '<span style="color:var(--muted);">~0</span>' : '<strong style="color:var(--green);">' + fmt(sc) + '</strong>';
+    var oddsStr = M4L_TIER_ODDS_D[t2] < 100 ? M4L_TIER_ODDS_D[t2] : fmt(M4L_TIER_ODDS_D[t2]);
+    rows += '<tr><td>' + M4L_TIER_NAMES[t2] + '</td><td class="small">1 in ' + oddsStr + '</td><td>' + M4L_TIER_PRIZES[t2] + '</td><td>' + wStr + '</td><td>' + lifeNote + '</td></tr>';
+  }
+  var totalW = Math.round(tc.reduce(function(a,b){return a+b;},0) * scale);
+
+  var el = document.getElementById('m4l-draw-result');
+  if (!el) return;
+  el.innerHTML =
+    '<div style="margin:10px 0 8px;">' + ballsHtml + '</div>' +
+    '<div class="small" style="margin-bottom:10px;color:var(--muted);">Simulated crowd: ' + fmt(_m4lCrowdSz) + ' tickets. Estimated total prize winners: ' + fmt(totalW) + ' (all tiers combined).</div>' +
+    '<div style="overflow-x:auto;"><table>' +
+      '<thead><tr><th>Match</th><th>Odds</th><th>Prize</th><th>Winners in crowd</th><th>Prize-sharing note</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table></div>' +
+    '<div class="small" style="margin-top:8px;color:var(--muted);">Winner counts are scaled from ' + fmt(M4L_SAMPLE_N) + ' sample tickets. Low-probability tiers may show 0 in a single run — re-draw for another sample.</div>';
+}
+
+function _m4lIsSeq3(nums) {
+  for (var i = 0; i <= nums.length - 3; i++)
+    if (nums[i+1]===nums[i]+1 && nums[i+2]===nums[i]+2) return true;
+  return false;
+}
+
+function _m4lGenAvoid() {
+  var pastKeys = (M4L_INFO.rows || []).map(function(d){ return d.numbers.join(','); });
+  for (var att = 0; att < 800; att++) {
+    var s = new Set();
+    while (s.size < 3) s.add(32 + Math.floor(Math.random() * 27)); // 32-58
+    var tr = 0;
+    while (s.size < 5 && tr++ < 120) s.add(1 + Math.floor(Math.random() * 58));
+    if (s.size < 5) continue;
+    var nums = Array.from(s).sort(function(a,b){return a-b;});
+    if (_m4lIsSeq3(nums)) continue;
+    if (nums.every(function(n){return n%5===0;})) continue;
+    if (nums.every(function(n){return n%7===0;})) continue;
+    if (pastKeys.indexOf(nums.join(',')) >= 0) continue;
+    return { nums: nums, mb: 1+Math.floor(Math.random()*5) };
+  }
+  return null;
+}
+
+function m4lBuildTickets() {
+  if (!_m4lSample) { showToast('Run "Simulate crowd" first to see sharing-risk estimates.', '#ff6b6b'); return; }
+  var results = [], tried = 0;
+  while (results.length < 5 && tried++ < 30) {
+    var t = _m4lGenAvoid();
+    if (!t) continue;
+    var key = t.nums.join(',');
+    var sc = 0;
+    for (var j = 0; j < _m4lSample.length; j++) if (_m4lSample[j].nums.join(',')===key) sc++;
+    var sharers = Math.round(sc * _m4lCrowdSz / M4L_SAMPLE_N);
+    results.push({ nums: t.nums, mb: t.mb, sharers: sharers });
+  }
+  var el = document.getElementById('m4l-tickets-result');
+  if (!el) return;
+  if (!results.length) { el.innerHTML = '<div class="small danger">Could not generate qualifying tickets. Try again.</div>'; return; }
+  var rows = results.map(function(t, i) {
+    var numsStr = t.nums.map(function(n){return ('0'+n).slice(-2);}).join(' - ');
+    var share = t.sharers < 1
+      ? '<span class="good">Very low — fewer than 1 other simulated player</span>'
+      : '<span class="warn">∼' + fmt(t.sharers) + ' other simulated players</span>';
+    return '<tr><td>' + (i+1) + '</td>' +
+      '<td class="mono" style="letter-spacing:2px;">' + numsStr + '</td>' +
+      '<td class="mono">MB ' + t.mb + '</td>' +
+      '<td>' + share + '</td></tr>';
+  }).join('');
+  el.innerHTML =
+    '<div class="tableWrap"><table>' +
+      '<thead><tr><th>#</th><th>Numbers</th><th>MB</th><th>Sharing risk in simulated crowd of ' + fmt(_m4lCrowdSz) + '</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table></div>' +
+    '<div class="small" style="margin-top:8px;color:var(--muted);">Sharing risk = estimated co-holders of the exact same 5 numbers. Lower = less prize-sharing exposure if you win. Does NOT affect your odds of winning.</div>';
+}
+
+function m4lSimCardHTML() {
+  return '<div id="m4l-sim-card" class="card" style="margin-top:16px;">' +
+
+    '<div class="sectionTitle">Virtual Crowd Simulator</div>' +
+
+    '<div class="notice warn" style="margin-top:10px;font-weight:700;font-size:13px;">' +
+    '⚠️ SIMULATED CROWD — ILLUSTRATIVE ONLY. Every real ticket has identical odds ' +
+    '(any prize ∼1 in 8.47; top prize 1 in 22,910,580). This tool models prize SHARING, ' +
+    'not winning likelihood. Simulated human-behavior patterns are an approximation of real player choices.' +
+    '</div>' +
+
+    '<div class="notice" style="margin-top:8px;font-size:12px;">' +
+    '📊 No hot/cold number analysis is shown. With ≈140 draws on record, this dataset ' +
+    'is far too small for any per-number frequency claim to be statistically meaningful ' +
+    '(several thousand draws are needed). The simulator uses known structural human-bias ' +
+    'patterns instead of draw history.' +
+    '</div>' +
+
+    '<div class="controls" style="margin-top:14px;">' +
+      '<label class="small">Simulated crowd size</label>' +
+      '<select id="m4l-crowd-sz" style="min-height:44px;">' +
+        '<option value="100000">100K tickets</option>' +
+        '<option value="500000">500K tickets</option>' +
+        '<option value="1000000" selected>1M tickets</option>' +
+        '<option value="5000000">5M tickets</option>' +
+        '<option value="10000000">10M tickets</option>' +
+      '</select>' +
+      '<button class="primary" onclick="m4lRunSimulation()" style="min-height:44px;">Simulate crowd</button>' +
+    '</div>' +
+
+    // Distribution chart area
+    '<div id="m4l-dist-area" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:none;">' +
+    '</div>' +
+
+    // Mock drawing area
+    '<div id="m4l-draw-area" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:none;">' +
+      '<div class="sectionTitle" style="font-size:14px;">Mock Drawing</div>' +
+      '<div class="small" style="margin-bottom:10px;color:var(--muted);">Picks a random winning combination and counts how many of the simulated tickets hit each prize tier. Run it multiple times for different outcomes.</div>' +
+      '<button class="secondary" onclick="m4lRunMockDraw()" style="min-height:44px;">🎱 Draw numbers</button>' +
+      '<div id="m4l-draw-result" style="margin-top:12px;"></div>' +
+    '</div>' +
+
+    // Ticket builder area
+    '<div id="m4l-tickets-area" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:none;">' +
+      '<div class="sectionTitle" style="font-size:14px;">Crowd-Avoiding Ticket Builder</div>' +
+      '<div class="notice" style="margin-top:8px;font-size:12px;">' +
+        'Generates 5 tickets that avoid the most overplayed patterns: ≥3 of 5 numbers from 32–58, ' +
+        'no three consecutive numbers, no all-multiples-of-5 or -7 combos, and no exact match to any ' +
+        'M4L draw on file. <strong>This does not affect your 1-in-22,910,580 top-prize odds.</strong> ' +
+        'It only reduces sharing exposure if you do win.' +
+      '</div>' +
+      '<button class="secondary" onclick="m4lBuildTickets()" style="min-height:44px;margin-top:10px;">🏟 Generate 5 tickets</button>' +
+      '<div id="m4l-tickets-result" style="margin-top:12px;"></div>' +
+    '</div>' +
+
+  '</div>';
+}
+
 
 function bulkImportOfficialResults() {
   const area = document.getElementById('bulkResults');
@@ -1343,6 +1760,7 @@ async function init() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js').catch(() => {});
   }
+  startAutoRefreshPoller();
 }
 
 // ─── COUNTDOWN ────────────────────────────────
