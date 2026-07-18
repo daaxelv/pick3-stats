@@ -262,7 +262,7 @@ function runEngine(tabKey) {
   const rawGhost = counts.map((pc, idx) => {
     const combo = String(idx).padStart(3,'0');
     const histFreq = freqArr[idx] || 0;
-    const overdue = overdueArr[idx] || (totalDraws+1);
+    const overdue = overdueArr[idx] ?? (totalDraws+1);
     const hw = humanWeight(combo);
     return { combo, estPlayers:pc, histFreq, overdue, reasons:hw.reasons, unique:isUnique(combo), double:isDouble(combo), triple:isTriple(combo) };
   });
