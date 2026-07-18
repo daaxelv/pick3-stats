@@ -266,7 +266,15 @@ function runEngine(tabKey) {
   });
   applyManualUpdates(rawGhost, tabKey);
   rawGhost.sort((a,b)=> a.estPlayers-b.estPlayers || b.overdue-a.overdue || a.histFreq-b.histFreq);
-  const eligible = rawGhost.filter(r=>!r.recentHit);
+  const excludeRecent = (()=>{
+    const cb = document.getElementById(tabKey+'-exclude-recent');
+    return cb ? cb.checked : false;
+  })();
+  const recentN = excludeRecent ? parseInt((document.getElementById(tabKey+'-recent-n')||{value:'3'}).value, 10) : Infinity;
+  // Show/hide the disclaimer notice
+  const excNotice = document.getElementById(tabKey+'-exclude-notice');
+  if (excNotice) excNotice.style.display = excludeRecent ? 'block' : 'none';
+  const eligible = rawGhost.filter(r => !r.recentHit && (!excludeRecent || r.overdue > recentN));
   const top25 = eligible.slice(0,25);
 
   const playerVals = rawGhost.map(x=>x.estPlayers);
@@ -363,6 +371,22 @@ function engineSkeleton(tabKey, title, subtitle) {
           <option value="both" selected>Show both</option>
         </select>
         <button class="primary" onclick="runEngine('${tabKey}')">Run engine</button>
+        <span style="width:1px;height:36px;background:var(--line);margin:0 4px;flex:0 0 auto;"></span>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;min-height:44px;white-space:nowrap;">
+          <input type="checkbox" id="${tabKey}-exclude-recent" style="width:18px;height:18px;accent-color:var(--gold);min-height:0;cursor:pointer;" onchange="document.getElementById('${tabKey}-recent-n-wrap').style.display=this.checked?'flex':'none';runEngine('${tabKey}');">
+          <span class="small" style="color:var(--gold);">Exclude recent winners</span>
+        </label>
+        <span id="${tabKey}-recent-n-wrap" style="display:none;align-items:center;gap:6px;">
+          <label class="small" style="white-space:nowrap;">last</label>
+          <select id="${tabKey}-recent-n" onchange="runEngine('${tabKey}')" style="min-height:44px;padding:8px 10px;">
+            <option value="1">1 draw</option>
+            <option value="3" selected>3 draws</option>
+            <option value="7">7 draws</option>
+          </select>
+        </span>
+      </div>
+      <div id="${tabKey}-exclude-notice" style="display:none;margin-top:8px;padding:8px 12px;border-radius:10px;border:1px solid var(--gold);background:#1a1305;font-size:12px;color:var(--gold);">
+        ⚠ <strong>Personal preference filter:</strong> combos that hit within the selected window are hidden from Sections A–C. This does <em>not</em> change any combo's 1-in-1,000 odds — every draw is always independent.
       </div>
     </div>
     <div id="${tabKey}-results"></div>
@@ -547,7 +571,7 @@ function renderTracker() {
     </div>
     <div class="card" style="margin-top:16px;">
       <div class="sectionTitle">Logged plays</div>
-      <div class="tableWrap"><table><thead><tr><th>Date</th><th>Draw</th><th>Play</th><th>Type</th><th>Result</th><th>P/L</th></tr></thead><tbody id="trackerRows"><tr><td colspan="6" class="small">No plays logged yet.</td></tr></tbody></table></div>
+      <div class="tableWrap"><table><thead><tr><th>Date</th><th>Draw</th><th>Play</th><th>Type</th><th>Result</th><th>P/L</th><th></th></tr></thead><tbody id="trackerRows"><tr><td colspan="6" class="small">No plays logged yet.</td></tr></tbody></table></div>
     </div>`;
 }
 
@@ -576,7 +600,7 @@ function addPlay() {
 function rerenderTrackerRows() {
   const body = document.getElementById('trackerRows');
   if (!body) return;
-  if (!state.loggedPlays.length) { body.innerHTML = '<tr><td colspan="6" class="small">No plays logged yet.</td></tr>'; return; }
+  if (!state.loggedPlays.length) { body.innerHTML = '<tr><td colspan="7" class="small">No plays logged yet.</td></tr>'; return; }
   body.innerHTML = state.loggedPlays.map(function(p){
     const win = state.winningDraws.find(w => w.date===p.date && w.draw===p.draw);
     const cost = p.type==='SBF' ? 2 : 1;
@@ -612,8 +636,32 @@ function rerenderTrackerRows() {
       }
     }
     const plClass = pl == null ? '' : (pl>=0?'good':'danger');
-    return '<tr><td>' + p.date + '</td><td>' + p.draw + '</td><td class="mono">' + p.combo + '</td><td>' + p.type + '</td><td>' + result + '</td><td class="' + plClass + '">' + plLabel + '</td></tr>';
+    const delBtn = '<button onclick="deletePlay(' + idx + ')" title="Delete this play" style="background:transparent;border:1px solid var(--red);color:var(--red);border-radius:8px;padding:0;width:36px;height:36px;min-height:44px;font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;margin:auto;" aria-label="Delete play">✕</button>';
+    return '<tr><td>' + p.date + '</td><td>' + p.draw + '</td><td class="mono">' + p.combo + '</td><td>' + p.type + '</td><td>' + result + '</td><td class="' + plClass + '">' + plLabel + '</td><td style="text-align:center;">' + delBtn + '</td></tr>';
   }).join('');
+
+  // Totals row
+  const knownPls = state.loggedPlays.map(function(p, idx) {
+    const win = state.winningDraws.find(w => w.date===p.date && w.draw===p.draw);
+    const cost = p.type==='SBF' ? 2 : 1;
+    if (!win) return -cost;
+    const payout = payoutInfo(p.combo, p.type==='SBF');
+    const hitExact = p.combo === win.combo;
+    const hitAny = !hitExact && p.combo.split('').sort().join('') === win.combo.split('').sort().join('');
+    if (!(hitExact || hitAny) || p.type==='SBF') return -cost;
+    const avg = hitExact ? payout.exactAvg : payout.anyAvg;
+    return avg == null ? -cost : Math.round((avg - cost) * 100) / 100;
+  });
+  const totalSpent = state.loggedPlays.reduce((s,p)=>s+(p.type==='SBF'?2:1),0);
+  const totalPL = knownPls.reduce((s,v)=>s+v,0);
+  const plClass2 = totalPL>=0?'good':'danger';
+  body.innerHTML += '<tr style="border-top:2px solid var(--line);font-weight:700;"><td colspan="5" style="text-align:right;">Total (' + state.loggedPlays.length + ' plays · $' + totalSpent + ' spent)</td><td class="' + plClass2 + '">' + (totalPL>=0?'+':'') + '$' + totalPL.toFixed(2) + ' est. net</td><td></td></tr>';
+}
+
+function deletePlay(idx) {
+  if (!confirm('Remove this play from the tracker?')) return;
+  state.loggedPlays.splice(idx, 1);
+  rerenderTrackerRows();
 }
 
 function addManualOfficialResult() {
@@ -1403,6 +1451,7 @@ window.setUpdateStatus = function(msg, kind) {
   showToast(msg, kind === 'error' ? '#ff6b6b' : '#46e58c');
 };
 
+window.deletePlay = deletePlay;
 window.addManualOfficialResult = addManualOfficialResult;
 window.removeManualOfficialResult = removeManualOfficialResult;
 window.exportBackup = exportBackup;
@@ -1412,5 +1461,11 @@ window.downloadMissingTemplate = downloadMissingTemplate;
 init();
 startCountdown();
 </script>
+<a href="heat.html" aria-label="Open Monthly Heat"
+   style="position:fixed;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));
+   z-index:9999;background:#e8b64c;color:#1a1305;font-weight:700;font-size:15px;
+   padding:12px 18px;border-radius:999px;text-decoration:none;
+   box-shadow:0 4px 14px rgba(0,0,0,.45);min-height:44px;display:flex;align-items:center;">
+   🔥 Monthly Heat</a>
 </body>
 </html>
