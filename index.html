@@ -2411,5 +2411,68 @@ startCountdown();
    padding:12px 18px;border-radius:999px;text-decoration:none;
    box-shadow:0 4px 14px rgba(0,0,0,.45);min-height:44px;display:flex;align-items:center;">
    🔥 Monthly Heat</a>
+  <a href="tracker.html" aria-label="Open Hit Tracker"
+   style="position:fixed;right:14px;bottom:calc(72px + env(safe-area-inset-bottom));
+   z-index:9999;background:#57c48a;color:#08281a;font-weight:700;font-size:15px;
+   padding:12px 18px;border-radius:999px;text-decoration:none;
+   box-shadow:0 4px 14px rgba(0,0,0,.45);min-height:44px;display:flex;align-items:center;">
+   🎯 Hit Tracker</a>
+<script>
+/* Hit Tracker auto-logger: snapshots Section C to localStorage whenever the engine renders */
+(function(){
+"use strict";
+var KEY="p3_hit_tracker_v1", timer=null;
+function pad(n){return (n<10?"0":"")+n;}
+function targetDraw(){
+  var et=new Date(new Date().toLocaleString("en-US",{timeZone:"America/New_York"}));
+  var mins=et.getHours()*60+et.getMinutes(), d=new Date(et), draw;
+  if(mins<12*60+53){draw="MID";}
+  else if(mins<22*60+53){draw="EVE";}
+  else{draw="MID";d.setDate(d.getDate()+1);}
+  return {date:d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()),draw:draw};
+}
+function findSectionC(){
+  var els=document.querySelectorAll("h1,h2,h3,h4,div,section");
+  for(var i=0;i<els.length;i++){
+    var t=(els[i].textContent||"");
+    if(t.indexOf("SECTION C")>-1 && t.length<200){
+      var el=els[i];
+      for(var up=0;up<6&&el;up++){
+        if((el.textContent||"").indexOf("Play 1")>-1) return el;
+        el=el.parentElement;
+      }
+    }
+  }
+  return null;
+}
+function extractPlays(text){
+  var clean=text.replace(/\d+\.\d+/g," ").replace(/[\d][\d,]{3,}/g," ");
+  var m=clean.match(/\b\d{3}\b/g)||[], seen={},out=[];
+  m.forEach(function(x){if(!seen[x]){seen[x]=1;out.push(x);}});
+  return out.slice(0,10);
+}
+function snapshot(){
+  var sec=findSectionC(); if(!sec) return;
+  var plays=extractPlays(sec.textContent||"");
+  if(plays.length<5) return;                       // ignore partial renders
+  var t=targetDraw(), logs;
+  try{logs=JSON.parse(localStorage.getItem(KEY))||[];}catch(e){logs=[];}
+  var ex=null;
+  for(var i=0;i<logs.length;i++){
+    if(logs[i].date===t.date&&logs[i].draw===t.draw){ex=logs[i];break;}
+  }
+  if(ex){
+    if(ex.numbers.join(",")===plays.join(",")) return;   // unchanged, skip
+    ex.numbers=plays; ex.auto=true;
+  } else {
+    logs.push({date:t.date,draw:t.draw,numbers:plays,auto:true});
+  }
+  localStorage.setItem(KEY,JSON.stringify(logs));
+}
+function arm(){clearTimeout(timer);timer=setTimeout(snapshot,1200);}
+new MutationObserver(arm).observe(document.body,{childList:true,subtree:true});
+window.addEventListener("load",arm);
+})();
+</script>
 </body>
 </html>
