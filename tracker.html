@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d1822">
+<title>Hit Tracker · NJ Pick 3 Engine vs Reality</title>
+<style>
+  :root{--bg:#0d1822;--panel:#13202d;--panel2:#0f1a25;--line:#1f3242;--ink:#dce8f2;
+    --dim:#7e93a6;--gold:#e8b64c;--hit:#57c48a;--box:#e8a34c;--fb:#4c9de8;--miss:#3a4c5c;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:18px 14px calc(24px + env(safe-area-inset-bottom));}
+  .wrap{max-width:900px;margin:0 auto;}
+  a{color:var(--fb);text-decoration:none;}
+  a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{
+    outline:2px solid var(--gold);outline-offset:2px;}
+  h1{font-size:26px;margin-top:6px;}
+  h1 .accent{color:var(--gold);}
+  h2{font-size:17px;margin:0 0 10px;color:var(--gold);}
+  .back{font-size:14px;color:var(--dim);}
+  .sub{color:var(--dim);font-size:14px;margin-top:4px;max-width:64ch;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:14px;margin:16px 0;}
+  label{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--dim);margin:10px 0 5px;}
+  input,select,textarea{width:100%;min-height:44px;background:var(--panel2);color:var(--ink);
+    border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:16px;}
+  textarea{min-height:70px;font-variant-numeric:tabular-nums;}
+  .row{display:flex;gap:10px;flex-wrap:wrap;}
+  .row > div{flex:1 1 140px;}
+  button{min-height:44px;border:0;border-radius:8px;padding:10px 18px;font-size:15px;
+    cursor:pointer;background:var(--gold);color:#1a1305;font-weight:700;}
+  button.ghost{background:var(--panel2);color:var(--dim);border:1px solid var(--line);font-weight:400;}
+  .badge{display:inline-block;font-size:11px;letter-spacing:.06em;border-radius:5px;
+    padding:2px 7px;margin:1px 3px 1px 0;font-weight:700;}
+  .b-exact{background:var(--hit);color:#08281a;}
+  .b-box{background:var(--box);color:#2b1a05;}
+  .b-fbe{background:var(--fb);color:#071a2b;}
+  .b-fbb{background:#2e5f8f;color:#dce8f2;}
+  .b-miss{background:var(--miss);color:#a9bccb;font-weight:400;}
+  .b-wait{background:var(--panel2);color:var(--dim);border:1px solid var(--line);font-weight:400;}
+  table{width:100%;border-collapse:collapse;}
+  th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);
+    text-align:left;padding:8px 8px;border-bottom:1px solid var(--line);}
+  td{padding:9px 8px;border-bottom:1px solid var(--line);font-size:15px;vertical-align:top;}
+  tr:last-child td{border-bottom:0;}
+  .nums{font-variant-numeric:tabular-nums;letter-spacing:.05em;}
+  .stat{display:inline-block;margin:4px 14px 4px 0;}
+  .stat b{font-size:20px;color:var(--ink);}
+  .stat span{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);}
+  .honest{margin:12px 0 0;padding:10px 12px;background:var(--panel2);
+    border-left:3px solid var(--gold);border-radius:0 8px 8px 0;color:var(--dim);font-size:13.5px;}
+  .honest b{color:var(--ink);}
+  /* calendar */
+  .calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .calhead b{font-size:17px;}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .dow{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);
+    text-align:center;padding:2px 0;}
+  .day{min-height:52px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+    padding:4px;font-size:12px;color:var(--dim);cursor:pointer;position:relative;}
+  .day.off{opacity:.25;cursor:default;}
+  .day .dots{position:absolute;bottom:4px;left:4px;right:4px;display:flex;gap:3px;}
+  .dot{flex:1;height:8px;border-radius:3px;background:transparent;}
+  .dot.exact{background:var(--hit);}
+  .dot.box{background:var(--box);}
+  .dot.fb{background:var(--fb);}
+  .dot.miss{background:var(--miss);}
+  .dot.wait{border:1px dashed var(--line);}
+  .legend{font-size:12px;color:var(--dim);margin-top:8px;}
+  .legend .chip{display:inline-block;width:12px;height:9px;border-radius:3px;vertical-align:-1px;margin:0 4px 0 10px;}
+  footer{margin-top:22px;padding-top:14px;border-top:1px solid var(--line);
+    color:var(--dim);font-size:12.5px;line-height:1.6;}
+  .del{background:transparent;border:1px solid #7c3a3a;color:#d98c8c;min-height:34px;
+    padding:4px 10px;font-weight:400;border-radius:6px;font-size:13px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="back" href="./">← Back to the main engine</a>
+    <h1>Hit <span class="accent">Tracker</span></h1>
+    <p class="sub">Log the numbers the engine gave you, and this page grades them against the real
+    NJ results automatically — exact, box, and Fireball-combination matches — with a calendar of your
+    hit history and the honest chance-expected baseline beside every total.</p>
+  </header>
+
+  <div class="card">
+    <h2>Log a play set</h2>
+    <div class="row">
+      <div><label for="d">Date</label><input type="date" id="d"></div>
+      <div><label for="dr">Drawing</label>
+        <select id="dr"><option value="MID">Midday</option><option value="EVE">Evening</option></select></div>
+    </div>
+    <label for="nums">Numbers played (from Section C — separate with spaces or commas)</label>
+    <textarea id="nums" placeholder="e.g. 546 720 503 766 739 249 722 223 877 505"></textarea>
+    <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+      <button id="save">Save play set</button>
+      <button class="ghost" id="today">Jump to today</button>
+    </div>
+    <p class="honest" id="savemsg" style="display:none;"></p>
+  </div>
+
+  <div class="card">
+    <h2>Scoreboard</h2>
+    <div id="stats"></div>
+    <div class="honest" id="baseline"></div>
+  </div>
+
+  <div class="card">
+    <div class="calhead">
+      <button class="ghost" id="prev">←</button>
+      <b id="mlabel"></b>
+      <button class="ghost" id="next">→</button>
+    </div>
+    <div class="cal" id="cal"></div>
+    <div class="legend">Midday = left bar, Evening = right bar.
+      <span class="chip" style="background:var(--hit)"></span>exact
+      <span class="chip" style="background:var(--box)"></span>box
+      <span class="chip" style="background:var(--fb)"></span>fireball
+      <span class="chip" style="background:var(--miss)"></span>logged, no hit
+      <span class="chip" style="border:1px dashed var(--line)"></span>awaiting result
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Log &amp; grades</h2>
+    <div id="log"></div>
+  </div>
+
+  <footer>
+    <b>Read the scoreboard honestly.</b> Ten box plays per draw are expected to connect roughly once
+    every 17 draws by pure chance (more often counting Fireball combinations). Hits at or near the
+    green baseline are randomness doing what randomness does — the engine curates for crowd-avoidance
+    and payout value, not for prediction, because no tool can predict a random drawing. 18+ ·
+    1-800-GAMBLER if it stops being fun.
+  </footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+var KEY="p3_hit_tracker_v1";
+var results={}; // "date|draw" -> {n:"389", fb:"9"}
+var state={logs:load(), month:null};
+
+function load(){ try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return [];} }
+function persist(){ localStorage.setItem(KEY, JSON.stringify(state.logs)); }
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];});}
+function pad(n){return (n<10?"0":"")+n;}
+function todayISO(){var t=new Date();return t.getFullYear()+"-"+pad(t.getMonth()+1)+"-"+pad(t.getDate());}
+
+function fbCombos(n,fb){
+  if(!fb) return [];
+  var s={} , out=[];
+  for(var i=0;i<3;i++){var c=n.slice(0,i)+fb+n.slice(i+1); if(!s[c]){s[c]=1; out.push(c);} }
+  return out;
+}
+function sorted(n){return n.split("").sort().join("");}
+
+function grade(play, res){
+  // returns one of: exact, box, fbe (fireball exact), fbb (fireball box), miss
+  if(!res) return "wait";
+  if(play===res.n) return "exact";
+  if(sorted(play)===sorted(res.n)) return "box";
+  var fbs=fbCombos(res.n,res.fb);
+  for(var i=0;i<fbs.length;i++){ if(play===fbs[i]) return "fbe"; }
+  for(var j=0;j<fbs.length;j++){ if(sorted(play)===sorted(fbs[j])) return "fbb"; }
+  return "miss";
+}
+var BADGE={exact:['b-exact','EXACT'],box:['b-box','BOX'],fbe:['b-fbe','FB EXACT'],
+  fbb:['b-fbb','FB BOX'],miss:['b-miss','—'],wait:['b-wait','awaiting result']};
+var RANK={exact:5,fbe:4,box:3,fbb:2,miss:1,wait:0};
+
+function bestOf(entry){
+  var res=results[entry.date+"|"+entry.draw], best="wait";
+  if(res){ best="miss";
+    entry.numbers.forEach(function(p){var g=grade(p,res); if(RANK[g]>RANK[best]) best=g;});
+  }
+  return best;
+}
+
+function render(){
+  // scoreboard
+  var draws=0,ex=0,bx=0,fe=0,fbx=0,plays=0,pend=0;
+  state.logs.forEach(function(e){
+    var res=results[e.date+"|"+e.draw];
+    if(!res){pend++;return;}
+    draws++; plays+=e.numbers.length;
+    e.numbers.forEach(function(p){
+      var g=grade(p,res);
+      if(g==="exact")ex++; else if(g==="box")bx++;
+      else if(g==="fbe")fe++; else if(g==="fbb")fbx++;
+    });
+  });
+  var st=document.getElementById("stats");
+  st.innerHTML='<span class="stat"><b>'+state.logs.length+'</b><span>sets logged</span></span>'+
+    '<span class="stat"><b>'+draws+'</b><span>draws graded</span></span>'+
+    '<span class="stat"><b>'+ex+'</b><span>exact hits</span></span>'+
+    '<span class="stat"><b>'+bx+'</b><span>box hits</span></span>'+
+    '<span class="stat"><b>'+(fe+fbx)+'</b><span>fireball hits</span></span>'+
+    (pend?'<span class="stat"><b>'+pend+'</b><span>awaiting result</span></span>':'');
+  var expEx=plays/1000, expBx=plays*5/1000; // ~6 orderings incl exact; box-only ≈5/1000 avg
+  document.getElementById("baseline").innerHTML =
+    '<b>Chance-expected baseline for the plays graded so far:</b> exact ≈ '+expEx.toFixed(2)+
+    ', box ≈ '+expBx.toFixed(2)+' (Fireball combinations add roughly 2 extra effective combos per draw). '+
+    'Totals near these numbers are ordinary luck; a real edge would have to beat them consistently for months.';
+
+  renderCal();
+  renderLog();
+}
+
+function renderCal(){
+  var m=state.month, y=m.getFullYear(), mo=m.getMonth();
+  document.getElementById("mlabel").textContent =
+    m.toLocaleString("en-US",{month:"long",year:"numeric"});
+  var cal=document.getElementById("cal"); cal.innerHTML="";
+  ["S","M","T","W","T","F","S"].forEach(function(d){
+    var e=document.createElement("div");e.className="dow";e.textContent=d;cal.appendChild(e);});
+  var first=new Date(y,mo,1), start=first.getDay(), dim=new Date(y,mo+1,0).getDate();
+  for(var i=0;i<start;i++){var o=document.createElement("div");o.className="day off";cal.appendChild(o);}
+  for(var d=1;d<=dim;d++){
+    var iso=y+"-"+pad(mo+1)+"-"+pad(d);
+    var cell=document.createElement("div"); cell.className="day"; cell.textContent=d;
+    var dots=document.createElement("div"); dots.className="dots";
+    ["MID","EVE"].forEach(function(dr){
+      var e=state.logs.filter(function(l){return l.date===iso&&l.draw===dr;})[0];
+      var dot=document.createElement("div"); dot.className="dot";
+      if(e){ var b=bestOf(e);
+        dot.classList.add(b==="exact"?"exact":b==="box"?"box":(b==="fbe"||b==="fbb")?"fb":b==="wait"?"wait":"miss");
+      }
+      dots.appendChild(dot);
+    });
+    cell.appendChild(dots);
+    (function(iso){cell.addEventListener("click",function(){
+      var el=document.getElementById("log-"+iso);
+      if(el){el.scrollIntoView({behavior:"smooth",block:"center"});}
+    });})(iso);
+    cal.appendChild(cell);
+  }
+}
+
+function renderLog(){
+  var box=document.getElementById("log");
+  if(!state.logs.length){box.innerHTML='<p class="honest">Nothing logged yet. Save tonight\'s Section C plays above — grading happens automatically once the result lands in the data.</p>';return;}
+  var logs=state.logs.slice().sort(function(a,b){
+    return (b.date+b.draw).localeCompare(a.date+a.draw);});
+  var html='<table><thead><tr><th>Date · draw</th><th>Result</th><th>Your numbers</th><th></th></tr></thead><tbody>';
+  logs.forEach(function(e,idx){
+    var res=results[e.date+"|"+e.draw];
+    var resTxt = res ? '<span class="nums">'+esc(res.n.split("").join("-"))+
+      (res.fb?' <span style="color:var(--gold)">FB '+esc(res.fb)+'</span>':'')+'</span>'
+      : '<span class="b-wait badge">awaiting result</span>';
+    var numsHtml = e.numbers.map(function(p){
+      var g=grade(p,res), b=BADGE[g];
+      return '<span style="white-space:nowrap"><span class="nums">'+esc(p)+'</span> <span class="badge '+b[0]+'">'+b[1]+'</span></span>';
+    }).join(" &nbsp; ");
+    html+='<tr id="log-'+esc(e.date)+'"><td style="white-space:nowrap">'+esc(e.date)+'<br><span style="color:var(--dim)">'+esc(e.draw)+'</span></td>'+
+      '<td>'+resTxt+'</td><td>'+numsHtml+'</td>'+
+      '<td><button class="del" data-i="'+state.logs.indexOf(e)+'">✕</button></td></tr>';
+  });
+  html+='</tbody></table>';
+  box.innerHTML=html;
+  Array.prototype.forEach.call(box.querySelectorAll(".del"),function(btn){
+    btn.addEventListener("click",function(){
+      if(confirm("Delete this logged play set?")){
+        state.logs.splice(parseInt(btn.getAttribute("data-i"),10),1);
+        persist(); render();
+      }
+    });
+  });
+}
+
+document.getElementById("save").addEventListener("click",function(){
+  var d=document.getElementById("d").value,
+      dr=document.getElementById("dr").value,
+      raw=document.getElementById("nums").value;
+  var msg=document.getElementById("savemsg");
+  var nums=(raw.match(/\d{3}/g)||[]).filter(function(x){return /^\d{3}$/.test(x);});
+  if(!d){msg.textContent="Pick a date first.";msg.style.display="block";return;}
+  if(!nums.length){msg.textContent="No valid 3-digit numbers found — paste them like: 546 720 503";msg.style.display="block";return;}
+  if(nums.length>15) nums=nums.slice(0,15);
+  var existing=state.logs.filter(function(l){return l.date===d&&l.draw===dr;})[0];
+  if(existing){
+    if(!confirm("A set is already logged for "+d+" "+dr+". Replace it?")) return;
+    existing.numbers=nums;
+  } else {
+    state.logs.push({date:d,draw:dr,numbers:nums});
+  }
+  persist();
+  msg.innerHTML="Saved <b>"+nums.length+"</b> numbers for "+esc(d)+" "+esc(dr)+
+    ". Grading is automatic once the result is in the data.";
+  msg.style.display="block";
+  render();
+});
+document.getElementById("today").addEventListener("click",function(){
+  document.getElementById("d").value=todayISO();
+  state.month=new Date(); render();
+});
+document.getElementById("prev").addEventListener("click",function(){
+  state.month=new Date(state.month.getFullYear(),state.month.getMonth()-1,1);renderCal();});
+document.getElementById("next").addEventListener("click",function(){
+  state.month=new Date(state.month.getFullYear(),state.month.getMonth()+1,1);renderCal();});
+
+// init
+document.getElementById("d").value=todayISO();
+state.month=new Date();
+render();
+fetch("data/nj_numbers_canonical.csv",{cache:"no-store"})
+  .then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.text();})
+  .then(function(t){
+    t.split(/\r?\n/).forEach(function(line){
+      var p=line.split(",");
+      if(p.length>=5 && p[0]==="P3"){
+        var digits=(p[3]||"").replace(/-/g,"");
+        if(/^\d{3}$/.test(digits))
+          results[p[1]+"|"+p[2]]={n:digits, fb:(p[4]||"").trim()};
+      }
+    });
+    render();
+  })
+  .catch(function(err){
+    document.getElementById("baseline").innerHTML=
+      "<b>Could not load results data</b> ("+esc(err.message)+") — grading paused; your logs are safe on this device.";
+  });
+})();
+</script>
+</body>
+</html>
