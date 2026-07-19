@@ -1125,8 +1125,37 @@ function renderM4LPane() {
     </div>`;
   // Preserve the simulator card across re-renders (its state lives in the DOM)
   var _sc = document.getElementById('m4l-sim-card');
-  if (_sc) pane.appendChild(_sc);
-  else { var _se = document.createElement('div'); _se.innerHTML = m4lSimCardHTML(); pane.appendChild(_se.firstElementChild); }
+  if (_sc) {
+    pane.appendChild(_sc);
+  } else {
+    var _se = document.createElement('div');
+    _se.innerHTML = m4lSimCardHTML();
+    pane.appendChild(_se.firstElementChild);
+    // If the Exact-mode worker is already running when the sim-card is freshly
+    // created (e.g. on the very first render while a background worker is active),
+    // restore the progress area so the user can see the bar and Cancel button.
+    if (_m4lFOWorker && !_m4lFOReady) {
+      var _fpanel = document.getElementById('m4l-fo-panel');
+      if (_fpanel) _fpanel.style.display = 'block';
+      var _fob = document.getElementById('m4l-fo-open-btn');
+      if (_fob) _fob.style.display = 'none';
+      var _fprog = document.getElementById('m4l-fo-prog');
+      if (_fprog) {
+        var _fpb = document.getElementById('m4l-fo-prog-bar');
+        if (_fpb) { _fpb.max = _m4lFOProgTotal; _fpb.value = _m4lFOProgDone; }
+        var _fpt = document.getElementById('m4l-fo-prog-txt');
+        if (_fpt) {
+          var _fPct = Math.round(_m4lFOProgDone / _m4lFOProgTotal * 100);
+          _fpt.textContent = 'Generation running in background — ' + fmt(_m4lFOProgDone) + ' of ' + fmt(M4L_FO_TOTAL) + ' (' + _fPct + '%)…';
+        }
+        _fprog.style.display = 'block';
+      }
+      var _fcnc = document.getElementById('m4l-fo-cancel-btn');
+      if (_fcnc) _fcnc.style.display = '';
+      var _fsb = document.getElementById('m4l-fo-start-btn');
+      if (_fsb) { _fsb.disabled = true; _fsb.textContent = 'Running…'; }
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1746,6 +1775,22 @@ function _m4lFOStartFast() {
   _m4lFOOnDone(mf);
 }
 
+// Last-received progress values for the rAF paint loop.
+var _m4lFOProgDone  = 0;
+var _m4lFOProgTotal = M4L_FO_TOTAL;
+var _m4lFOProgRaf   = false; // true while a requestAnimationFrame paint is queued
+
+function _m4lFOPaintProgress() {
+  _m4lFOProgRaf = false;
+  // Always look up elements by ID so we find the live DOM nodes even if the
+  // sim-card was detached and re-attached by renderM4LPane while the worker ran.
+  var progBar = document.getElementById('m4l-fo-prog-bar');
+  var progTxt = document.getElementById('m4l-fo-prog-txt');
+  var pct = Math.round(_m4lFOProgDone / _m4lFOProgTotal * 100);
+  if (progBar) progBar.value = _m4lFOProgDone;
+  if (progTxt) progTxt.textContent = 'Generated ' + fmt(_m4lFOProgDone) + ' of ' + fmt(M4L_FO_TOTAL) + ' (' + pct + '%)…';
+}
+
 function _m4lFOStartExact() {
   _m4lInit();
   var src  = _m4lFOWorkerSrc();
@@ -1754,14 +1799,22 @@ function _m4lFOStartExact() {
   if (_m4lFOWorker) _m4lFOWorker.terminate();
   _m4lFOWorker = new Worker(url);
   URL.revokeObjectURL(url);
-  var progBar = document.getElementById('m4l-fo-prog-bar');
-  var progTxt = document.getElementById('m4l-fo-prog-txt');
+  _m4lFOProgDone  = 0;
+  _m4lFOProgTotal = M4L_FO_TOTAL;
+  _m4lFOProgRaf   = false;
   _m4lFOWorker.onmessage = function(e) {
     var d = e.data;
     if (d.type === 'progress') {
-      var pct = Math.round(d.done / d.total * 100);
-      if (progBar) progBar.value = d.done;
-      if (progTxt) progTxt.textContent = 'Generated ' + fmt(d.done) + ' of ' + fmt(M4L_FO_TOTAL) + ' (' + pct + '%)…';
+      // Coalesce rapid bursts: store the latest value and schedule a single
+      // paint on the next animation frame.  This keeps the bar smooth even
+      // when the worker posts many messages in quick succession or the browser
+      // throttles the worker thread on a slow device.
+      _m4lFOProgDone  = d.done;
+      _m4lFOProgTotal = d.total;
+      if (!_m4lFOProgRaf) {
+        _m4lFOProgRaf = true;
+        requestAnimationFrame(_m4lFOPaintProgress);
+      }
     } else if (d.type === 'done') {
       _m4lFOMode = 'exact';
       _m4lFOOnDone(d.margFreqs);
