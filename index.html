@@ -2418,7 +2418,7 @@ startCountdown();
    box-shadow:0 4px 14px rgba(0,0,0,.45);min-height:44px;display:flex;align-items:center;">
    🎯 Hit Tracker</a>
 <script>
-/* Hit Tracker auto-logger: snapshots Section C to localStorage whenever the engine renders */
+/* Hit Tracker auto-logger v3: Section C plays + FULL watchlist (Sections A, B, C, D tables) */
 (function(){
 "use strict";
 var KEY="p3_hit_tracker_v1", timer=null;
@@ -2435,7 +2435,7 @@ function findSectionC(){
   var els=document.querySelectorAll("h1,h2,h3,h4,div,section");
   for(var i=0;i<els.length;i++){
     var t=(els[i].textContent||"");
-    if(t.indexOf("SECTION C")>-1 && t.length<200){
+    if(t.indexOf("SECTION C")>-1 && t.length<220){
       var el=els[i];
       for(var up=0;up<6&&el;up++){
         if((el.textContent||"").indexOf("Play 1")>-1) return el;
@@ -2445,16 +2445,41 @@ function findSectionC(){
   }
   return null;
 }
-function extractPlays(text){
+function extractPlays(text,cap){
   var clean=text.replace(/\d+\.\d+/g," ").replace(/[\d][\d,]{3,}/g," ");
   var m=clean.match(/\b\d{3}\b/g)||[], seen={},out=[];
   m.forEach(function(x){if(!seen[x]){seen[x]=1;out.push(x);}});
-  return out.slice(0,10);
+  return out.slice(0,cap||10);
+}
+function harvestWatchlist(){
+  // read every table that has a COMBO column; take the first 3-digit cell per row
+  var seen={}, out=[];
+  var tables=document.querySelectorAll("table");
+  for(var t=0;t<tables.length;t++){
+    var head=(tables[t].textContent||"");
+    if(head.indexOf("COMBO")===-1 && head.indexOf("Combo")===-1) continue;
+    var rows=tables[t].querySelectorAll("tr");
+    for(var r=0;r<rows.length;r++){
+      var cells=rows[r].querySelectorAll("td");
+      for(var c=0;c<cells.length && c<3;c++){
+        var v=(cells[c].textContent||"").trim();
+        if(/^\d{3}$/.test(v)){
+          if(!seen[v]){seen[v]=1; out.push(v);}
+          break;
+        }
+      }
+      if(out.length>=150) return out;
+    }
+  }
+  return out;
 }
 function snapshot(){
-  var sec=findSectionC(); if(!sec) return;
-  var plays=extractPlays(sec.textContent||"");
-  if(plays.length<5) return;                       // ignore partial renders
+  var secC=findSectionC();
+  var plays=secC?extractPlays(secC.textContent||"",10):[];
+  var watch=harvestWatchlist();
+  // plays belong in the watchlist too
+  plays.forEach(function(p){ if(watch.indexOf(p)===-1) watch.push(p); });
+  if(plays.length<5 && watch.length<10) return;
   var t=targetDraw(), logs;
   try{logs=JSON.parse(localStorage.getItem(KEY))||[];}catch(e){logs=[];}
   var ex=null;
@@ -2462,10 +2487,12 @@ function snapshot(){
     if(logs[i].date===t.date&&logs[i].draw===t.draw){ex=logs[i];break;}
   }
   if(ex){
-    if(ex.numbers.join(",")===plays.join(",")) return;   // unchanged, skip
-    ex.numbers=plays; ex.auto=true;
+    if(plays.length>=5) ex.numbers=plays;
+    if(watch.length>=10) ex.watch=watch;
+    ex.auto=true;
   } else {
-    logs.push({date:t.date,draw:t.draw,numbers:plays,auto:true});
+    logs.push({date:t.date,draw:t.draw,
+      numbers:plays.length>=5?plays:[],watch:watch,auto:true});
   }
   localStorage.setItem(KEY,JSON.stringify(logs));
 }
