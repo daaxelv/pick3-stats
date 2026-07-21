@@ -110,6 +110,16 @@
   </div>
 
   <div class="card">
+    <h2>Engine sightings — full engine watchlist</h2>
+    <p class="sub" style="margin-bottom:8px">Every combo the engine displayed anywhere — Ghost 25, both Section B value lists, your plays, and the D.2 Top 100 —
+    checked against each graded draw — exact, box, and Fireball-variant connections. This is the
+    wide-net view you asked for; expect regular sightings by pure coverage math.</p>
+    <div id="sightstats"></div>
+    <div id="sightlog"></div>
+    <div class="honest" id="sightbase"></div>
+  </div>
+
+  <div class="card">
     <div class="calhead">
       <button class="ghost" id="prev">←</button>
       <b id="mlabel"></b>
@@ -182,6 +192,41 @@ function bestOf(entry){
   return best;
 }
 
+
+function boxWays(n){var c={};n.split("").forEach(function(d){c[d]=(c[d]||0)+1;});
+  var k=Object.keys(c).length; return k===3?6:(k===2?3:1);}
+function coveredOrderings(n,fb){ // approx orderings that would count as a sighting for this combo
+  return boxWays(n)*3; } // own family + ~2 fireball-variant families (approximation, labeled ≈)
+function renderSightings(){
+  var st=document.getElementById("sightstats"), lg=document.getElementById("sightlog"),
+      bs=document.getElementById("sightbase");
+  if(!st) return;
+  var logs=state.logs.filter(function(e){return e.watch&&e.watch.length;});
+  if(!logs.length){lg.innerHTML='<p class="honest">No watchlists captured yet — run the engine once after this upgrade and Section A gets snapshotted automatically.</p>';st.innerHTML='';bs.innerHTML='';return;}
+  var graded=0, sights=0, expected=0, html='<table><thead><tr><th>Date · draw</th><th>Result</th><th>Watchlist connections</th></tr></thead><tbody>';
+  logs.slice().sort(function(a,b){return (b.date+b.draw).localeCompare(a.date+a.draw);})
+  .forEach(function(e){
+    var res=results[e.date+"|"+e.draw];
+    var resTxt=res?'<span class="nums">'+esc(res.n.split("").join("-"))+(res.fb?' <span style="color:var(--gold)">FB '+esc(res.fb)+'</span>':'')+'</span>':'<span class="b-wait badge">awaiting</span>';
+    var cons="";
+    if(res){graded++;
+      e.watch.forEach(function(p){expected+=coveredOrderings(p,res.fb)/1000;
+        var g=grade(p,res);
+        if(g!=="miss"&&g!=="wait"){sights++;var b=BADGE[g];
+          cons+='<span style="white-space:nowrap;margin-right:10px"><span class="nums">'+esc(p)+'</span> <span class="badge '+b[0]+'">'+b[1]+'</span></span>';}
+      });
+      if(!cons)cons='<span style="color:var(--dim)">none this draw</span>';
+    } else cons='<span style="color:var(--dim)">—</span>';
+    html+='<tr><td style="white-space:nowrap">'+esc(e.date)+'<br><span style="color:var(--dim)">'+esc(e.draw)+'</span></td><td>'+resTxt+'</td><td>'+cons+'</td></tr>';
+  });
+  html+='</tbody></table>';
+  lg.innerHTML=html;
+  st.innerHTML='<span class="stat"><b>'+graded+'</b><span>draws checked</span></span>'+
+    '<span class="stat"><b>'+sights+'</b><span>sightings</span></span>';
+  bs.innerHTML='<b>Chance-expected sightings for these draws: ≈ '+expected.toFixed(1)+
+    '.</b> A 100+ combo watchlist against a draw that crowns ~6 combos (plus Fireball variants) is expected to connect on MOST draws — with a net this wide, sightings are the rule, not the exception; only a sustained rate above this number would mean anything. Beating it consistently for months would be the story.';
+}
+
 function render(){
   // scoreboard
   var draws=0,ex=0,bx=0,fe=0,fbx=0,plays=0,pend=0;
@@ -210,6 +255,7 @@ function render(){
 
   renderCal();
   renderLog();
+  renderSightings();
 }
 
 function renderCal(){
