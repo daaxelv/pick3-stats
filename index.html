@@ -2501,5 +2501,111 @@ new MutationObserver(arm).observe(document.body,{childList:true,subtree:true});
 window.addEventListener("load",arm);
 })();
 </script>
+<script>
+/* Recent-hit marker: flags combos that connected (exact/box/Fireball) in recent draws */
+(function(){
+"use strict";
+var PKEY="p3_hitmark_prefs", prefs;
+try{prefs=JSON.parse(localStorage.getItem(PKEY))||{};}catch(e){prefs={};}
+if(prefs.n===undefined)prefs.n=4;
+if(prefs.hide===undefined)prefs.hide=false;
+var connected=null, timer=null;
+
+function perms(n){var a=n.split(""),o={},r=[];
+  [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]].forEach(function(p){
+    var s=a[p[0]]+a[p[1]]+a[p[2]]; if(!o[s]){o[s]=1;r.push(s);}});return r;}
+function fbV(n,fb){if(!fb)return[];var s={},r=[];
+  for(var i=0;i<3;i++){var c=n.slice(0,i)+fb+n.slice(i+1);if(!s[c]){s[c]=1;r.push(c);}}return r;}
+
+function loadRecent(){
+  fetch("data/nj_numbers_canonical.csv",{cache:"no-store"})
+  .then(function(r){return r.text();})
+  .then(function(t){
+    var rows=[];
+    t.split(/\r?\n/).forEach(function(line){
+      var p=line.split(",");
+      if(p.length>=5&&p[0]==="P3"){
+        var d=(p[3]||"").replace(/-/g,"");
+        if(/^\d{3}$/.test(d)) rows.push({n:d,fb:(p[4]||"").trim(),date:p[1],draw:p[2]});
+      }
+    });
+    rows.sort(function(a,b){return (a.date+a.draw).localeCompare(b.date+b.draw);});
+    var recent=rows.slice(-prefs.n);
+    connected={};
+    recent.forEach(function(d){
+      perms(d.n).forEach(function(x){if(!connected[x])connected[x]={d:d.date.slice(5),w:d.draw,how:""};});
+      fbV(d.n,d.fb).forEach(function(v){perms(v).forEach(function(x){
+        if(!connected[x])connected[x]={d:d.date.slice(5),w:d.draw,how:" FB"};});});
+    });
+    apply();
+  }).catch(function(){});
+}
+
+function mark(el,info){
+  if(el.getAttribute("data-hitmark"))return;
+  el.setAttribute("data-hitmark","1");
+  var b=document.createElement("span");
+  b.textContent="HIT "+info.d+" "+info.w+info.how;
+  b.style.cssText="display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;"+
+    "font-size:10px;font-weight:700;letter-spacing:.05em;background:#c0392b;color:#fff;vertical-align:2px;";
+  el.appendChild(b);
+}
+function apply(){
+  if(!connected)return;
+  var tables=document.querySelectorAll("table");
+  for(var t=0;t<tables.length;t++){
+    if((tables[t].textContent||"").indexOf("COMBO")===-1)continue;
+    var rows=tables[t].querySelectorAll("tr");
+    for(var r=0;r<rows.length;r++){
+      var cells=rows[r].querySelectorAll("td");
+      for(var c=0;c<cells.length&&c<3;c++){
+        var raw=(cells[c].textContent||"").trim();
+        var v=raw.replace(/HIT.*$/,"").trim();
+        if(/^\d{3}$/.test(v)){
+          if(connected[v]){mark(cells[c],connected[v]);
+            rows[r].style.display=prefs.hide?"none":"";
+            if(!prefs.hide)rows[r].style.opacity=".45";}
+          else{rows[r].style.display="";rows[r].style.opacity="";}
+          break;
+        }
+      }
+    }
+  }
+  var all=document.querySelectorAll("div,span,b,strong,h3,h4");
+  for(var i=0;i<all.length;i++){
+    var el=all[i];
+    if(el.children.length>1)continue;
+    var txt=(el.textContent||"").trim();
+    if(/^\d{3}$/.test(txt)&&connected[txt]&&!el.closest("table")){
+      mark(el,connected[txt]);
+    }
+  }
+}
+
+var bar=document.createElement("div");
+bar.style.cssText="position:fixed;left:14px;bottom:calc(14px + env(safe-area-inset-bottom));"+
+  "z-index:9999;background:#13202d;border:1px solid #1f3242;border-radius:999px;"+
+  "padding:8px 14px;font:12px -apple-system,sans-serif;color:#7e93a6;display:flex;gap:8px;align-items:center;";
+bar.innerHTML='<span style="color:#c0392b;font-weight:700">HIT marks</span>'+
+  '<label style="display:flex;gap:4px;align-items:center;cursor:pointer">'+
+  '<input type="checkbox" id="hmHide"'+(prefs.hide?" checked":"")+'> hide in tables</label>'+
+  '<select id="hmN" style="background:#0f1a25;color:#dce8f2;border:1px solid #1f3242;border-radius:6px;padding:2px 6px">'+
+  '<option value="2">last 2</option><option value="4">last 4</option><option value="6">last 6</option></select>';
+function attachBar(){
+  if(document.body){document.body.appendChild(bar);
+    document.getElementById("hmN").value=String(prefs.n);
+    document.getElementById("hmHide").addEventListener("change",function(e){
+      prefs.hide=e.target.checked;localStorage.setItem(PKEY,JSON.stringify(prefs));apply();});
+    document.getElementById("hmN").addEventListener("change",function(e){
+      prefs.n=parseInt(e.target.value,10);localStorage.setItem(PKEY,JSON.stringify(prefs));loadRecent();});
+    new MutationObserver(arm).observe(document.body,{childList:true,subtree:true});
+  } else { setTimeout(attachBar,300); }
+}
+function arm(){clearTimeout(timer);timer=setTimeout(apply,1400);}
+window.addEventListener("load",loadRecent);
+attachBar();
+loadRecent();
+})();
+</script>
 </body>
 </html>
