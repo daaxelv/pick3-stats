@@ -3,11 +3,12 @@
 // and can be added to the home screen, while always fetching the live
 // results CSV from the network first (falling back to cache only if the
 // network is unavailable) so stats never go stale on purpose.
-const CACHE_VERSION = 'ghost-engine-v1';
+const CACHE_VERSION = 'ghost-engine-v2-cooldown';
 const APP_SHELL = [
   './',
   './index.html',
   './odds.js',
+  './recent-history.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
