@@ -37,6 +37,9 @@ function harness(initialStorage = {}) {
   });
   context.window = context;
   vm.runInContext(historyScript, context, { filename: 'recent-history.js' });
+  for (const filename of ['crowd-model.js','feed-status.js']) {
+    vm.runInContext(readFileSync(new URL('./'+filename,import.meta.url),'utf8'),context,{filename});
+  }
   vm.runInContext(appScript, context, { filename: 'index.html' });
   vm.runInContext(`
     renderEngine = function() {};
@@ -53,6 +56,7 @@ function harness(initialStorage = {}) {
     const prefs = evaluate(`state.recentFilter.${tab}`);
     elements.set(`${tab}-agents`, element('100000'));
     elements.set(`${tab}-mode`, element('both'));
+    elements.set(`${tab}-crowd-model`, element(evaluate(`state.crowdPreferences.${tab}`)));
     elements.set(`${tab}-exclude-recent`, { ...element(''), checked: prefs.enabled });
     elements.set(`${tab}-recent-n`, element(String(prefs.draws)));
     elements.set(`${tab}-recent-all`, { ...element(''), checked: prefs.allDraws });
@@ -78,7 +82,7 @@ function harness(initialStorage = {}) {
     setCsv(rows) {
       const csv = ['game,date,draw,digits,fireball,prize_straight', ...rows.map(row =>
         [row.game || 'P3', row.date, row.draw, row.digits || row.combo.split('').join('-'), row.fireball || '', row.prize_straight || ''].join(','))].join('\n');
-      context.fetch = async () => ({ ok: true, text: async () => csv });
+      context.fetch = async url => url.endsWith('.json') ? {ok:false,status:404} : ({ ok: true, text: async () => csv });
     },
   };
 }
@@ -374,4 +378,62 @@ test('aggregate-only fallback never fabricates chronological exclusions from ove
   assert.equal(result.cooldown.availableCount, 0);
   assert.equal(result.cooldown.excluded.size, 0);
   assert.equal(result.eligible.length, 1000);
+});
+
+test('new crowd runs resample; reranking and feed refresh reuse the same crowd', async()=>{
+  const app=harness();
+  app.evaluate('Pick3Crowd.seed=()=>123');
+  const first=app.run('eve');
+  assert.equal(first.crowd.model,'sample');
+  assert.equal(first.crowd.counts.reduce((a,b)=>a+b),100000);
+  app.evaluate('Pick3Crowd.seed=()=>456');
+  const rerank=app.run('eve',{mode:'uniqueness'});
+  assert.equal(rerank.crowd,first.crowd);
+  app.context.runEngine('eve',true);
+  const fresh=app.evaluate('state.results.eve');
+  assert.notDeepEqual(plain(fresh.crowd.counts),plain(first.crowd.counts));
+  assert.equal(fresh.crowd.run,2);
+  assertSectionsFiltered(fresh);
+  for(const section of ['top25','ranked100','uniqueSection','repeatSection','plan']) for(const r of fresh[section]) {
+    assert.equal(r.estPlayers,fresh.crowd.counts[Number(r.combo)]);
+  }
+  app.setCsv([row(1,'MID','007'),row(1,'EVE','999')]);
+  await app.context._pollCsvOnce();
+  assert.equal(app.evaluate('state.results.eve.crowd'),fresh.crowd);
+});
+
+test('stable estimate gives identical plans on repeat and crowd preferences persist',()=>{
+  const app=harness();
+  app.setElement('eve-crowd-model','expected');
+  const first=app.run('eve');
+  app.context.runEngine('eve',true);
+  assert.deepEqual(combos(app.evaluate('state.results.eve.plan')),combos(first.plan));
+  const restored=harness(Object.fromEntries(app.storage));
+  assert.equal(restored.evaluate('state.crowdPreferences.eve'),'expected');
+  assert.equal(restored.evaluate('state.crowdPreferences.mid'),'sample');
+});
+
+test('truncated CSV is rejected without losing prior exclusions',async()=>{
+  const app=harness();
+  app.setCsv([row(1,'MID','007'),row(1,'EVE','999')]);
+  await app.context.loadLiveData();
+  app.setCsv([row(1,'MID','007')]);
+  assert.equal(await app.context.loadLiveData(),false);
+  assert.equal(app.evaluate('ENGINE_DATA.history.length'),2);
+  assert.equal(app.run('eve').cooldown.excluded.has('999'),true);
+});
+
+test('unchanged and failed polls refresh health without resampling',async()=>{
+  const app=harness();
+  app.setCsv([row(1,'MID','007'),row(1,'EVE','999')]);
+  await app.context._pollCsvOnce();
+  const first=app.evaluate('state.results.eve.crowd');
+  app.context.fetch=async()=>{throw Error('offline');};
+  await app.context._pollCsvOnce();
+  assert.equal(app.evaluate('state.dataSource.ok'),false);
+  assert.equal(app.evaluate('state.results.eve.crowd'),first);
+  app.setCsv([row(1,'MID','007'),row(1,'EVE','999')]);
+  await app.context._pollCsvOnce();
+  assert.equal(app.evaluate('state.dataSource.ok'),true);
+  assert.equal(app.evaluate('state.results.eve.crowd'),first);
 });
