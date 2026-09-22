@@ -1,0 +1,74 @@
+{
+  "checked_at": "2026-09-22T04:05:45.621204Z",
+  "conflict_count": 0,
+  "csv_sha256": "d15775410b96703cd91698cb33a42b1d71ae02eec17db6a1bf368bcb5d2c57c0",
+  "expected_through": {
+    "EVE": "2026-09-21",
+    "MID": "2026-09-21"
+  },
+  "failed_sources": [],
+  "newest_dates": {
+    "M4L": "2026-09-21",
+    "P3_EVE": "2026-09-21",
+    "P3_MID": "2026-09-21",
+    "P4_EVE": "2026-09-21",
+    "P4_MID": "2026-09-21"
+  },
+  "ok": true,
+  "partial_failure": false,
+  "recent_missing": {
+    "EVE": [],
+    "MID": []
+  },
+  "rows_added": 5,
+  "rows_after": 27351,
+  "rows_before": 27346,
+  "schema_version": 1,
+  "sources": {
+    "M4L": {
+      "added": 1,
+      "attempts": 1,
+      "conflicts": [],
+      "newest_date": "2026-09-21",
+      "ok": true,
+      "records_seen": 10,
+      "url": "https://www.lotteryusa.com/new-jersey/millionaire-for-life/"
+    },
+    "P3_EVE": {
+      "added": 1,
+      "attempts": 1,
+      "conflicts": [],
+      "newest_date": "2026-09-21",
+      "ok": true,
+      "records_seen": 50,
+      "url": "https://www.lotteryusa.com/new-jersey/pick-3/year"
+    },
+    "P3_MID": {
+      "added": 1,
+      "attempts": 1,
+      "conflicts": [],
+      "newest_date": "2026-09-21",
+      "ok": true,
+      "records_seen": 50,
+      "url": "https://www.lotteryusa.com/new-jersey/midday-pick-3/year"
+    },
+    "P4_EVE": {
+      "added": 1,
+      "attempts": 1,
+      "conflicts": [],
+      "newest_date": "2026-09-21",
+      "ok": true,
+      "records_seen": 50,
+      "url": "https://www.lotteryusa.com/new-jersey/pick-4/year"
+    },
+    "P4_MID": {
+      "added": 1,
+      "attempts": 1,
+      "conflicts": [],
+      "newest_date": "2026-09-21",
+      "ok": true,
+      "records_seen": 50,
+      "url": "https://www.lotteryusa.com/new-jersey/midday-pick-4/year"
+    }
+  }
+}
