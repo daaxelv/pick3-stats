@@ -2,36 +2,74 @@ name: Update NJ lottery results
 
 on:
   schedule:
-    # ~1:19 PM and ~11:17 PM Eastern, ~20 minutes after midday and evening drawings
-    - cron: "19 17 * * *"
-    - cron: "17 3 * * *"
-  workflow_dispatch: {}   # lets you also run it manually with one click
+    # UTC; GitHub may delay scheduled jobs. Retry late source publication.
+    - cron: "23,53 * * * *"
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - '*.js'
+      - '*.mjs'
+      - 'index.html'
+      - 'scripts/**'
+      - '.github/workflows/update-results.yml'
+
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: nj-results-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  update:
+  test:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test application logic
+        run: node --test *.test.mjs
+      - name: Test collector
+        run: python -m unittest discover -s scripts -p 'test_*.py' -v
 
+  update:
+    needs: test
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Fetch latest draws
+        id: collector
+        continue-on-error: true
         run: python scripts/update_results.py
-
-      - name: Commit new results
+      - name: Commit results and feed status
+        # A fatal input/output error must not commit an unrelated stale report.
+        if: steps.collector.outcome == 'success' || steps.collector.outputs.status_written == 'true'
         run: |
           git config user.name "results-bot"
           git config user.email "actions@github.com"
-          git add data/nj_numbers_canonical.csv
+          git add data/nj_numbers_canonical.csv data/feed-status.json
           if git diff --cached --quiet; then
             echo "Nothing new to commit."
           else
             git commit -m "Auto-update lottery results $(date -u +%F)"
             git push
           fi
+      - name: Report collector failure after saving valid updates
+        if: steps.collector.outcome == 'failure'
+        run: |
+          echo "Collector failed. Any successfully written independent results and feed status were committed above."
+          exit 1
