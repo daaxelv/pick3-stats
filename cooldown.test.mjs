@@ -42,6 +42,7 @@ function harness(initialStorage = {}) {
   }
   vm.runInContext(appScript, context, { filename: 'index.html' });
   vm.runInContext(`
+    originalRenderDataPane = renderDataPane;
     renderEngine = function() {};
     renderDataPane = function() {};
     renderTopSummary = function() {};
@@ -436,4 +437,28 @@ test('unchanged and failed polls refresh health without resampling',async()=>{
   await app.context._pollCsvOnce();
   assert.equal(app.evaluate('state.dataSource.ok'),true);
   assert.equal(app.evaluate('state.results.eve.crowd'),first);
+});
+
+
+test('collector metadata reaches coverage and engine notices without inventing a check time', async()=>{
+  const app=harness();
+  app.setCsv([row(1,'MID','007'),row(1,'EVE','999')]);
+  const csvFetch=app.context.fetch;
+  const metadata={schema_version:1,checked_at:'2026-09-22T04:00:00Z',ok:false,
+    sources:{P3_MID:{ok:true,conflicts:[]},P3_EVE:{ok:false,conflicts:[]}}};
+  app.context.fetch=async url=>url.endsWith('.json') ? {ok:true,json:async()=>metadata}:csvFetch(url);
+  await app.context.loadLiveData();
+  app.setElement('pane-data','');
+  app.context.originalRenderDataPane();
+  const markup=app.elements.get('pane-data').innerHTML;
+  assert.ok(markup.includes(new Date(metadata.checked_at).toLocaleString()));
+  assert.match(markup,/Collector last checked/);
+  assert.match(markup,/A source needs attention/);
+  app.setElement('eve-feed-notice','');
+  app.context.renderFeedNotice('eve');
+  assert.match(app.elements.get('eve-feed-notice').textContent,/could not read a Pick 3 source/);
+  const fresh=harness();
+  fresh.setElement('pane-data','');
+  fresh.context.originalRenderDataPane();
+  assert.match(fresh.elements.get('pane-data').innerHTML,/Not yet reported/);
 });

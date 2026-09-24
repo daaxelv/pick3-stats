@@ -2275,6 +2275,7 @@ function renderDataPane() {
       <div class="notice">The collector checks LotteryUSA, a secondary source, on a 30-minute schedule and saves valid results independently for each game. GitHub may delay scheduled jobs, and the source may post late. This page checks the published results every 5 minutes and when you return. The latest draw dates above tell you whether results are current; a successful file download alone does not. Verify results with the official NJ Lottery.</div>
       <div class="summary" style="margin-top:16px;">
         <div class="card"><div class="k">Data source</div><div class="v">${sourceLabel}</div><div class="small">${sourceStatusHtml}</div></div>
+        <div class="card"><div class="k">Collector last checked</div><div class="v">${state.feedStatus?.checked_at ? new Date(state.feedStatus.checked_at).toLocaleString() : 'Not yet reported'}</div><div class="small">${!state.feedStatus ? 'Refresh after the next collector run.' : state.feedStatus.ok ? 'All sources checked successfully.' : 'A source needs attention; saved results were kept.'}</div></div>
         <div class="card"><div class="k">Latest evening on file</div><div class="v">${ENGINE_DATA.datasets.EVE.date_end}</div><div class="small">Expected through ${report.expected.EVE}</div></div>
         <div class="card"><div class="k">Latest midday on file</div><div class="v">${ENGINE_DATA.datasets.MID.date_end}</div><div class="small">Expected through ${report.expected.MID}</div></div>
       </div>

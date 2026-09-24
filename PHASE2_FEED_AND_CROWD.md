@@ -19,9 +19,12 @@ Section C selects from the rankings, and Section D repeats those 10 candidates w
 
 - The existing LotteryUSA secondary source remains in use and is now labeled accurately. It is not an official NJ Lottery API.
 - Collection is scheduled at minutes 23 and 53 each hour, with retries for temporary fetch failures. GitHub may delay jobs; this is a scheduled feed, not a guaranteed real-time feed.
+- Pull requests run the JavaScript and Python tests without fetching or writing live results. Scheduled and manual runs collect only after those tests pass.
 - Each game/session is collected independently. Valid Pick 3 draws are saved even if Pick 4 or Millionaire for Life is unavailable. The workflow commits those results and status before reporting a partial failure.
+- The current source pages expose about 50 P3/P4 draws and 10 M4L draws per request. They backfill gaps within that visible window; older gaps still require a historical import.
 - Only visible dated result-table rows are parsed. Copy/export widgets are ignored because they may disagree with the displayed table. Digits, Fireball, dates, and duplicate rows are validated; future draws are rejected.
 - Existing canonical results and historical prize values are preserved. Conflicting source records are reported in `data/feed-status.json` for review instead of silently overwriting history. New draws are appended once, with atomic file replacement.
+- The Data Coverage page displays the actual collector check time separately from the browser download time.
 - `data/feed-status.json` records the collector timestamp, source outcomes, newest dates, recent missing dates, and the results-file hash. It is produced by the collector, never fabricated by the UI.
 - The page checks the CSV/status on startup, every five minutes, and on return to the tab. It shows the newest actual results, missing dates in the previous 30 days, and the last collector check. Draw cutoffs use America/New_York with daylight-saving handling.
 - Polling, manual refresh, and initial loading share one data-application path. Same-size corrections are detected; incomplete downloads cannot replace a complete cached history. Offline responses are labeled as cached. Existing manual overrides, P4/M4L, and payout data handling remain.
