@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-24T08:34:54.707066Z",
+  "checked_at": "2026-09-24T13:50:14.222258Z",
   "conflict_count": 0,
   "csv_sha256": "2a77cd94284974934b883c6c417858e14000a58abb326404dc74cc04d4451fd0",
   "expected_through": {
@@ -20,13 +20,13 @@
     "EVE": [],
     "MID": []
   },
-  "rows_added": 1,
+  "rows_added": 0,
   "rows_after": 27361,
-  "rows_before": 27360,
+  "rows_before": 27361,
   "schema_version": 1,
   "sources": {
     "M4L": {
-      "added": 1,
+      "added": 0,
       "attempts": 1,
       "conflicts": [],
       "newest_date": "2026-09-23",
