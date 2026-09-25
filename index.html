@@ -1411,6 +1411,9 @@ var _m4lFOMargFreqs = null; // marginal freq array (either mode)
 var _m4lFOReady    = false; // true after generation completes
 var _m4lFOLookupCb = null;  // pending exact-mode lookup callback
 var _m4lFOCCMap    = null;  // combo-count map for fast mode
+var _m4lFocusRowsCache = [], _m4lFocusTotal = 0, _m4lFocusPage = 0;
+var _m4lFocusTarget = 'm4l-focus';
+var M4L_FOCUS_PAGE_SIZE = 50;
 
 var _m4lW = null;    // bias weights [index 0 unused; 1-58]
 var _m4lCum = null;  // cumulative weights for O(log n) sampling
@@ -1476,6 +1479,47 @@ function _m4lRunSample() {
   _m4lSample = tkts; _m4lMargFreqs = mf;
 }
 
+function _m4lFocusMatches(t) { return t.mb === 4 && t.nums.includes(4); }
+function _m4lFocusRowsFromTickets(tickets) {
+  var counts = new Map();
+  tickets.forEach(function(t) {
+    if (!_m4lFocusMatches(t)) return;
+    var key = t.nums.join(',') + ',4';
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+  return [...counts].map(function(entry){return {key:entry[0],count:entry[1]};})
+    .sort(function(a,b){return b.count-a.count || a.key.localeCompare(b.key);});
+}
+function _m4lFocusRender(rows, total, page, population, targetId) {
+  var el = document.getElementById(targetId);
+  if (!el) return;
+  var pages = Math.ceil(total / M4L_FOCUS_PAGE_SIZE);
+  el.innerHTML = '<div class="sectionTitle" style="font-size:15px;">04 in the five + Millionaire Ball 04</div>' +
+    '<div class="notice">' + fmt(total) + ' distinct matching combinations in ' + population + '. 04 can appear after 01, 02, or 03. These are simulated player choices, not actual ticket sales or forecasts. Every valid ticket has the same draw odds.</div>' +
+    (total ? '<div class="tableWrap" style="margin-top:10px;"><table><thead><tr><th>Five main numbers</th><th>Millionaire Ball</th><th>Simulated players</th></tr></thead><tbody>' + rows.map(function(r){
+      var n = r.key.split(','); return '<tr><td class="mono">' + n.slice(0,5).map(function(x){return ('0'+x).slice(-2);}).join(' - ') + '</td><td>04</td><td>' + fmt(r.count) + '</td></tr>';
+    }).join('') + '</tbody></table></div>' +
+    '<div class="controls" style="margin-top:10px;"><button onclick="m4lFocusChangePage(-1)" ' + (!page?'disabled':'') + '>Previous</button><span class="small">Page ' + (page+1) + ' of ' + pages + '</span><button onclick="m4lFocusChangePage(1)" ' + (page>=pages-1?'disabled':'') + '>Next</button></div>' : '');
+  el.style.display = 'block';
+}
+function m4lFocusChangePage(delta) {
+  var next = _m4lFocusPage + delta;
+  if (next < 0 || next >= Math.ceil(_m4lFocusTotal/M4L_FOCUS_PAGE_SIZE)) return;
+  _m4lFocusPage = next;
+  if (_m4lFocusTarget === 'm4l-fo-focus' && _m4lFOMode === 'exact' && _m4lFOWorker) {
+    _m4lFOWorker.postMessage({type:'focusPage',page:next,size:M4L_FOCUS_PAGE_SIZE});
+  } else {
+    var pop = _m4lFocusTarget === 'm4l-fo-focus' ? '200,000 generated tickets' : '15,000 generated tickets';
+    _m4lFocusRender(_m4lFocusRowsCache.slice(next*M4L_FOCUS_PAGE_SIZE,(next+1)*M4L_FOCUS_PAGE_SIZE),_m4lFocusTotal,next,pop,_m4lFocusTarget);
+  }
+}
+function _m4lShowSampleFocus() {
+  _m4lFocusTarget = 'm4l-focus';
+  _m4lFocusRowsCache = _m4lFocusRowsFromTickets(_m4lSample);
+  _m4lFocusTotal = _m4lFocusRowsCache.length; _m4lFocusPage = 0;
+  _m4lFocusRender(_m4lFocusRowsCache.slice(0,M4L_FOCUS_PAGE_SIZE),_m4lFocusTotal,0,'15,000 generated tickets','m4l-focus');
+}
+
 function _m4lTier(tNums, dArr, tMb, dMb) {
   var hit = 0, dSet = {};
   for (var i = 0; i < dArr.length; i++) dSet[dArr[i]] = 1;
@@ -1510,8 +1554,9 @@ function m4lRunSimulation() {
       if (drawA) drawA.style.display = 'block';
       var tkA = document.getElementById('m4l-tickets-area');
       if (tkA) tkA.style.display = 'block';
+      _m4lShowSampleFocus();
     } finally {
-      if (btn) { btn.disabled = false; btn.textContent = 'Simulate crowd'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Play the odds · filter 04 / MB04'; }
     }
   }, 10);
 }
@@ -1663,6 +1708,7 @@ function _m4lFOWorkerSrc() {
     'var _foCC = {};',
     'var _foCum = null, _foTotW = 0;',
     'var _foMF = null, _foTotal = 0, _foDone = 0;',
+    'var _foFocus = null;',
     'function _foPick(used) {',
     '  for (var att = 0; att < 50; att++) {',
     '    var r = Math.random() * _foTotW;',
@@ -1704,10 +1750,17 @@ function _m4lFOWorkerSrc() {
     '  if (d.type === "start") {',
     '    _foCum = d.cum; _foTotW = d.totW;',
     '    _foTotal = d.total; _foDone = 0;',
-    '    _foCC = {}; _foMF = new Uint32Array(59);',
+    '    _foCC = {}; _foMF = new Uint32Array(59); _foFocus = null;',
     '    _foChunk();',
     '  } else if (d.type === "lookup") {',
     '    self.postMessage({ type:"lookupResult", key:d.key, count:_foCC[d.key]||0 });',
+    '  } else if (d.type === "focusPage") {',
+    '    if (!_foFocus) {',
+    '      _foFocus = Object.keys(_foCC).filter(function(k){var parts=k.split(","); return parts[5]==="4" && parts.slice(0,5).indexOf("4")!==-1;})',
+    '        .map(function(k){return {key:k,count:_foCC[k]};});',
+    '      _foFocus.sort(function(a,b){return b.count-a.count || a.key.localeCompare(b.key);});',
+    '    }',
+    '    self.postMessage({type:"focusResult",page:d.page,total:_foFocus.length,rows:_foFocus.slice(d.page*d.size,(d.page+1)*d.size)});',
     '  }',
     '};'
   ].join('\n');
@@ -1847,6 +1900,7 @@ function m4lFOCancel() {
   if (_m4lFOWorker) { _m4lFOWorker.terminate(); _m4lFOWorker = null; }
   _m4lFOMode = null; _m4lFOReady = false; _m4lFOSample = null;
   _m4lFOMargFreqs = null; _m4lFOLookupCb = null; _m4lFOCCMap = null;
+  _m4lFocusRowsCache = []; _m4lFocusTotal = 0; _m4lFocusPage = 0;
   var els = ['m4l-fo-panel', 'm4l-fo-prog', 'm4l-fo-draw-area', 'm4l-fo-batch-area'];
   els.forEach(function(id) { var e = document.getElementById(id); if (e) e.style.display = 'none'; });
   var distA = document.getElementById('m4l-fo-dist-area');
@@ -1887,6 +1941,17 @@ function _m4lFOOnDone(margFreqs) {
   if (startBtn) { startBtn.disabled = false; startBtn.textContent = 'Re-run simulation'; }
   var cancelBtn = document.getElementById('m4l-fo-cancel-btn');
   if (cancelBtn) cancelBtn.style.display = 'none';
+  if (_m4lFOMode === 'exact') {
+    _m4lFocusTarget = 'm4l-fo-focus';
+    var focus = document.getElementById('m4l-fo-focus');
+    if (focus) { focus.textContent = 'Filtering exact simulated tickets…'; focus.style.display = 'block'; }
+    _m4lFOWorker.postMessage({type:'focusPage',page:0,size:M4L_FOCUS_PAGE_SIZE});
+  } else if (_m4lFOMode === 'fast') {
+    _m4lFocusTarget = 'm4l-fo-focus';
+    _m4lFocusRowsCache = _m4lFocusRowsFromTickets(_m4lFOSample);
+    _m4lFocusTotal = _m4lFocusRowsCache.length; _m4lFocusPage = 0;
+    _m4lFocusRender(_m4lFocusRowsCache.slice(0,M4L_FOCUS_PAGE_SIZE),_m4lFocusTotal,0,'200,000 generated tickets','m4l-fo-focus');
+  }
 }
 
 function _m4lFOStartFast() {
@@ -1950,6 +2015,9 @@ function _m4lFOStartExact() {
       _m4lFOOnDone(d.margFreqs);
     } else if (d.type === 'lookupResult' && _m4lFOLookupCb) {
       _m4lFOLookupCb(d);
+    } else if (d.type === 'focusResult') {
+      _m4lFocusTotal = d.total; _m4lFocusPage = d.page;
+      _m4lFocusRender(d.rows,d.total,d.page,'22,910,580 generated tickets','m4l-fo-focus');
     }
   };
   _m4lFOWorker.onerror = function(err) {
@@ -1975,6 +2043,8 @@ function m4lFOStart() {
   if (res) res.innerHTML = '';
   var bRes = document.getElementById('m4l-fo-batch-result');
   if (bRes) bRes.innerHTML = '';
+  var focus = document.getElementById('m4l-fo-focus');
+  if (focus) { focus.innerHTML = ''; focus.style.display = 'none'; }
   if (mode === 'fast') {
     var progArea = document.getElementById('m4l-fo-prog');
     if (progArea) progArea.style.display = 'none';
@@ -2103,12 +2173,13 @@ function m4lSimCardHTML() {
         '<option value="5000000">5M tickets</option>' +
         '<option value="10000000">10M tickets</option>' +
       '</select>' +
-      '<button class="primary" onclick="m4lRunSimulation()" style="min-height:44px;">Simulate crowd</button>' +
+      '<button class="primary" onclick="m4lRunSimulation()" style="min-height:44px;">Play the odds · filter 04 / MB04</button>' +
     '</div>' +
 
     // Distribution chart area
     '<div id="m4l-dist-area" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:none;">' +
     '</div>' +
+    '<div id="m4l-focus" style="display:none;margin-top:16px;"></div>' +
 
     // Mock drawing area
     '<div id="m4l-draw-area" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:none;">' +
@@ -2172,6 +2243,7 @@ function m4lSimCardHTML() {
         '</div>' +
 
         '<div id="m4l-fo-dist-area" style="display:none;margin-top:18px;padding-top:14px;border-top:1px solid var(--line);"></div>' +
+        '<div id="m4l-fo-focus" style="display:none;margin-top:16px;"></div>' +
 
         '<div id="m4l-fo-draw-area" style="display:none;margin-top:18px;padding-top:14px;border-top:1px solid var(--line);">' +
           '<div class="sectionTitle" style="font-size:14px;">Mock Drawing — Full-Odds Crowd</div>' +
