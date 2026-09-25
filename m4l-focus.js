@@ -14,6 +14,9 @@ function parseM4LCandidates(text, list) {
 }
 
 function rankM4LCandidates(tickets, rows) {
+  // Imports can contain the same draw twice (for example EVE and blank draw
+  // labels for a nightly M4L result). Count each dated result once.
+  rows = [...new Map(rows.map(r => [r.date + ':' + r.numbers.join('-') + ':' + r.mb, r])).values()];
   const matching = rows.filter(r => r.mb == 4 && r.numbers[0] === 4);
   const focusCounts = Array(59).fill(0);
   const allCounts = Array(59).fill(0);
@@ -33,7 +36,7 @@ function rankM4LCandidates(tickets, rows) {
     if (!unique.has(key)) unique.set(key, entry);
     else unique.get(key).list += ' + ' + t.list;
   });
-  return { matching, focusCounts, allCounts,
+  return { matching, focusCounts, allCounts, drawCount: rows.length,
     ranked: [...unique.values()].sort((a,b) =>
       b.focusScore-a.focusScore || b.allScore-a.allScore ||
       a.numbers.join('-').localeCompare(b.numbers.join('-'))) };
@@ -83,7 +86,7 @@ function showM4LFocus(card, rows) {
   if (!m4lFocus.tickets) return;
   const list = card.querySelector('#m4l-focus-list').value;
   const source = m4lFocus.tickets.filter(t => list === 'both' || t.list === list);
-  const {matching, focusCounts, ranked} = rankM4LCandidates(source, rows);
+  const {matching, focusCounts, ranked, drawCount} = rankM4LCandidates(source, rows);
   const count = Number(card.querySelector('#m4l-focus-limit').value);
   const historic = matching.length ? matching.map(r => r.date + ': ' + r.numbers.map(n => String(n).padStart(2,'0')).join('-') + ' MB:04').join(' · ') : 'None in the loaded history';
   const frequency = [...focusCounts.entries()].slice(5).filter(([n, hits]) => hits > 0)
@@ -91,7 +94,7 @@ function showM4LFocus(card, rows) {
     .map(([n,hits]) => String(n).padStart(2,'0') + ' (' + hits + ')').join(', ');
   // Values below come exclusively from the locally validated CSV and live draw rows.
   output.innerHTML = '<div class="small">' + ranked.length + ' unique tickets beginning 04 and ending MB:04 in this list. ' +
-    rows.length + ' draws on file; ' + matching.length + ' past draws match both 04s. The middle-number score sums appearances in those matching draws; ties use appearances across all M4L draws. Small samples are unstable.</div>' +
+    drawCount + ' distinct draws on file; ' + matching.length + ' past draws match both 04s. The middle-number score sums appearances in those matching draws; ties use appearances across all M4L draws. Small samples are unstable.</div>' +
     '<div class="small" style="margin-top:8px;">Middle numbers in matching draws: ' + (frequency || 'none') + '</div>' +
     '<div class="small" style="margin-top:8px;">Matching draw log: ' + historic + '</div>' +
     '<div style="overflow-x:auto;max-height:500px;overflow-y:auto;margin-top:12px;"><table><thead><tr><th>#</th><th>Ticket</th><th>Focused hits</th><th>All-history hits</th><th>Drawn before?</th><th>List</th></tr></thead><tbody>' +
