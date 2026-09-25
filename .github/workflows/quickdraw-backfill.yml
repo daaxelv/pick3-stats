@@ -41,13 +41,17 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Collect one official batch and validate coverage
         run: |
+          cp quickdraw/data/coverage.json /tmp/quickdraw-before.json
           node quickdraw/scripts/collect_official.mjs --max-batches 1
           python3 - <<'PY'
           import json
           from pathlib import Path
+          before = json.loads(Path('/tmp/quickdraw-before.json').read_text())
           coverage = json.loads(Path('quickdraw/data/coverage.json').read_text())
-          assert coverage['loaded_draws'] == 2373, coverage
-          assert coverage['gaps'][0]['from'] == 1001, coverage
+          assert coverage['loaded_draws'] > before['loaded_draws'], coverage
+          assert coverage['first_draw'] == before['first_draw'], coverage
+          assert coverage['last_draw'] >= before['last_draw'], coverage
+          assert coverage['missing_draws_between_loaded_endpoints'] <= before['missing_draws_between_loaded_endpoints'], coverage
           PY
 
   backfill:
