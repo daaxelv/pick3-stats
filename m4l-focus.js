@@ -14,9 +14,6 @@ function parseM4LCandidates(text, list) {
 }
 
 function rankM4LCandidates(tickets, rows) {
-  // Imports can contain the same draw twice (for example EVE and blank draw
-  // labels for a nightly M4L result). Count each dated result once.
-  rows = [...new Map(rows.map(r => [r.date + ':' + r.numbers.join('-') + ':' + r.mb, r])).values()];
   const matching = rows.filter(r => r.mb == 4 && r.numbers.includes(4));
   const focusCounts = Array(59).fill(0);
   const allCounts = Array(59).fill(0);
@@ -36,7 +33,7 @@ function rankM4LCandidates(tickets, rows) {
     if (!unique.has(key)) unique.set(key, entry);
     else unique.get(key).list += ' + ' + t.list;
   });
-  return { matching, focusCounts, allCounts, drawCount: rows.length,
+  return { matching, focusCounts, allCounts,
     ranked: [...unique.values()].sort((a,b) =>
       b.focusScore-a.focusScore || b.allScore-a.allScore ||
       a.numbers.join('-').localeCompare(b.numbers.join('-'))) };
@@ -46,8 +43,8 @@ function renderM4LFocus(pane, rows) {
   const card = document.createElement('div');
   card.className = 'card';
   card.style.marginTop = '16px';
-  card.innerHTML = '<div class="sectionTitle">04 main ball + Millionaire Ball 04: ticket shortlist</div>' +
-    '<div class="notice">Main ball 04 can appear anywhere among the five sorted main numbers, including after 01, 02, or 03. The separate Millionaire Ball must be 04. Compare the other four main numbers using past draws with both 04s. ' +
+  card.innerHTML = '<div class="sectionTitle">Your 04 + Millionaire Ball 04 ticket lists</div>' +
+    '<div class="notice">04 may appear anywhere among the five sorted main balls, including after 01, 02, or 03. The Millionaire Ball must be 04. Compare the other four main numbers using recorded draws with both 04s. ' +
     '<strong>Every valid combination has the same chance on the next draw, including combinations drawn before.</strong> Past repeats may feel unlikely, but history does not reduce their chance. This ranking is a way to organize plays, not a forecast.</div>' +
     '<div class="controls" style="margin-top:12px;"><label>Show <select id="m4l-focus-list"><option value="both">Both lists</option><option value="351">351: both high</option><option value="756">756: one high</option></select></label>' +
     '<label>Tickets <select id="m4l-focus-limit"><option value="10">Top 10</option><option value="25">Top 25</option><option value="50">Top 50</option></select></label>' +
@@ -65,7 +62,7 @@ async function loadM4LFocus(card, rows) {
   const output = card.querySelector('#m4l-focus-results');
   output.textContent = 'Loading your ticket lists…';
   try {
-    const paths = ['data/m4l_351_both_high.csv','data/m4l_756_one_high.csv'];
+    const paths = ['data/m4l/m4l_351_both_high.csv','data/m4l/m4l_756_one_high.csv'];
     const texts = await Promise.all(paths.map(async path => {
       const response = await fetch(path, {cache:'no-store'});
       if (!response.ok) throw new Error('Could not load ' + path);
@@ -86,16 +83,16 @@ function showM4LFocus(card, rows) {
   if (!m4lFocus.tickets) return;
   const list = card.querySelector('#m4l-focus-list').value;
   const source = m4lFocus.tickets.filter(t => list === 'both' || t.list === list);
-  const {matching, focusCounts, ranked, drawCount} = rankM4LCandidates(source, rows);
+  const {matching, focusCounts, ranked} = rankM4LCandidates(source, rows);
   const count = Number(card.querySelector('#m4l-focus-limit').value);
   const historic = matching.length ? matching.map(r => r.date + ': ' + r.numbers.map(n => String(n).padStart(2,'0')).join('-') + ' MB:04').join(' · ') : 'None in the loaded history';
   const frequency = [...focusCounts.entries()].filter(([n, hits]) => n !== 4 && hits > 0)
     .sort((a,b) => b[1]-a[1] || a[0]-b[0]).slice(0,12)
     .map(([n,hits]) => String(n).padStart(2,'0') + ' (' + hits + ')').join(', ');
   // Values below come exclusively from the locally validated CSV and live draw rows.
-  output.innerHTML = '<div class="small">' + ranked.length + ' unique tickets containing main ball 04 and using MB:04 in this list. ' +
-    drawCount + ' distinct draws on file; ' + matching.length + ' past draws match both 04s. The middle-number score sums appearances in those matching draws; ties use appearances across all M4L draws. Small samples are unstable.</div>' +
-    '<div class="small" style="margin-top:8px;">Other main numbers in matching draws: ' + (frequency || 'none') + '</div>' +
+  output.innerHTML = '<div class="small">' + ranked.length + ' unique tickets containing 04 with MB:04 in this list. ' +
+    rows.length + ' draws on file; ' + matching.length + ' past draws match both 04s. The middle-number score sums appearances in those matching draws; ties use appearances across all M4L draws. Small samples are unstable.</div>' +
+    '<div class="small" style="margin-top:8px;">Middle numbers in matching draws: ' + (frequency || 'none') + '</div>' +
     '<div class="small" style="margin-top:8px;">Matching draw log: ' + historic + '</div>' +
     '<div style="overflow-x:auto;max-height:500px;overflow-y:auto;margin-top:12px;"><table><thead><tr><th>#</th><th>Ticket</th><th>Focused hits</th><th>All-history hits</th><th>Drawn before?</th><th>List</th></tr></thead><tbody>' +
     ranked.slice(0,count).map((t,i) => '<tr><td>' + (i+1) + '</td><td class="mono">' + t.numbers.map(n=>String(n).padStart(2,'0')).join('-') + ' MB:04</td><td>' + t.focusScore + '</td><td>' + t.allScore + '</td><td>' + (t.repeated?'Yes':'No') + '</td><td>' + t.list + '</td></tr>').join('') +
