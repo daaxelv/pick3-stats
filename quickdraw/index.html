@@ -125,6 +125,21 @@ function sortNums(arr){ return [...arr].map(Number).filter(n=>n>=1&&n<=80).sort(
 function uniqSorted(arr){ return [...new Set(sortNums(arr))]; }
 function setKey(arr){ return uniqSorted(arr).map(pad2).join('-'); }
 function displaySet(arr){ return uniqSorted(arr).map(pad2).join(' '); }
+function matchHistory(set, history){
+  const wanted = uniqSorted(set);
+  const buckets = Array(wanted.length+1).fill(0);
+  let latestExact = null, latestNear = null;
+  for(const draw of history){
+    const drawn = new Set(uniqSorted(draw.numbers || []));
+    const matched = wanted.filter(n=>drawn.has(n));
+    buckets[matched.length]++;
+    const entry = {draw_no:draw.draw_no, date:draw.date, matched};
+    const later = previous => !previous || Number(draw.draw_no)>Number(previous.draw_no);
+    if(matched.length===wanted.length && later(latestExact)) latestExact=entry;
+    if(matched.length===wanted.length-1 && later(latestNear)) latestNear=entry;
+  }
+  return {exact:buckets[wanted.length], near:buckets[wanted.length-1] || 0, latestExact, latestNear};
+}
 function pairKey(a,b){ return a<b ? `${pad2(a)}-${pad2(b)}` : `${pad2(b)}-${pad2(a)}`; }
 function mean(arr){ return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
 function percentile(vals, p){
@@ -360,7 +375,7 @@ function renderEngineTab(){
   const s = state.settings;
   document.getElementById('pane-engine').innerHTML = `
     <div class="notice" style="margin-bottom:16px;">
-      <strong>How to use this like your Pick 3 engine:</strong> import official Quick Draw history, pick the target set size you want to chase, run the agents, then carry the highest-ranked sets into your real-world play list.
+      <strong>Run the simulation:</strong> choose a set size and agent count, then compare the Top 10 with draws loaded in your browser. Every fixed set of the same size has the same draw odds; a high history score is not a higher winning probability.
     </div>
     <div class="grid2">
       <div class="card">
@@ -401,7 +416,7 @@ function renderEngineTab(){
           The agents generate candidate sets and score them using number overdue pressure, frequency fade, recent-hit pressure, pair rarity, range balance, consecutive-number penalties, and exact-repeat penalties. The highest-scoring sets become your current target portfolio.
         </div>
         <div class="hr"></div>
-        <div class="small">Best starting point for a jackpot-style chase in this game: try <strong>9-spot</strong>, then run <strong>100K</strong> or <strong>1M</strong> agents if your browser can handle it.</div>
+        <div class="small">100K agents is already selected by default. More agents explore more candidate sets, but do not change the odds of a ticket. Exact 9/9 odds: about <strong>1 in 1,380,688</strong>; exact 10/10: about <strong>1 in 8,911,711</strong> per draw.</div>
       </div>
     </div>
     <div id="engineResults" style="margin-top:16px;"></div>
@@ -418,6 +433,13 @@ function renderEngineResults(){
   }
   const res = state.engineResult;
   const top3 = res.top.slice(0,3);
+  const top10 = res.top.slice(0,10).map((r,i)=>({rank:i+1, ...r, match:matchHistory(r.nums,state.history)}));
+  const historyCount = state.history.length.toLocaleString();
+  const matchRows = top10.map(r=>`
+    <tr><td>${r.rank}</td><td class="mono">${displaySet(r.nums)}</td><td>${r.score.toFixed(2)}</td>
+      <td>${r.match.exact}${r.match.latestExact ? `<div class="small">Latest: ${r.match.latestExact.date} · #${r.match.latestExact.draw_no}</div>` : ''}</td>
+      <td>${r.match.near}${r.match.latestNear ? `<div class="small">Latest: ${r.match.latestNear.date} · #${r.match.latestNear.draw_no}<br>Matched: ${displaySet(r.match.latestNear.matched)}</div>` : ''}</td></tr>
+  `).join('');
   const rows = res.top.map((r,i)=>`
     <tr>
       <td>${i+1}</td>
@@ -446,6 +468,11 @@ function renderEngineResults(){
           </div>
         </div>
       `).join('')}
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="sectionTitle">Top 10 plays · real draw cross-reference</div>
+      <div class="notice" style="margin-bottom:12px;">Ranked by the simulation score, not winning probability. Exact means every selected number appeared among the 20 drawn balls; one short means all but one appeared. Checked against <strong>${historyCount} draws currently loaded in this browser</strong>, including any imported results. The official archive still has historical gaps, so zero means no match in this checked window.</div>
+      <div class="tableWrap"><table><thead><tr><th>Rank</th><th>Numbers</th><th>Score</th><th>Exact matches</th><th>One short</th></tr></thead><tbody>${matchRows}</tbody></table></div>
     </div>
     <div class="cols" style="margin-bottom:16px;">
       <div class="card">
