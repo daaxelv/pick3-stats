@@ -2,6 +2,18 @@
 // past draws only; every valid M4L combination has the same draw probability.
 const m4lFocus = { tickets: null, error: '' };
 
+// The feed can contain the same nightly result twice with different draw labels
+// or zero-padding. Count that result once without discarding a later repeat.
+function uniqueM4LDraws(rows) {
+  const seen = new Set();
+  return rows.filter(row => {
+    const key = row.date + ':' + row.numbers.slice().sort((a, b) => a - b).join('-') + ':' + Number(row.mb);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function parseM4LCandidates(text, list) {
   return text.trim().split(/\r?\n/).slice(1).map(line => {
     const cells = line.split(',');
@@ -14,12 +26,13 @@ function parseM4LCandidates(text, list) {
 }
 
 function rankM4LCandidates(tickets, rows) {
-  const matching = rows.filter(r => r.mb == 4 && r.numbers.includes(4));
+  const draws = uniqueM4LDraws(rows);
+  const matching = draws.filter(r => r.mb == 4 && r.numbers.includes(4));
   const focusCounts = Array(59).fill(0);
   const allCounts = Array(59).fill(0);
-  rows.forEach(r => r.numbers.forEach(n => { if (n >= 1 && n <= 58) allCounts[n]++; }));
+  draws.forEach(r => r.numbers.forEach(n => { if (n >= 1 && n <= 58) allCounts[n]++; }));
   matching.forEach(r => r.numbers.filter(n => n !== 4).forEach(n => focusCounts[n]++));
-  const previous = new Set(rows.map(r => r.numbers.join('-') + ':' + r.mb));
+  const previous = new Set(draws.map(r => r.numbers.join('-') + ':' + r.mb));
   const unique = new Map();
   tickets.filter(t => t.numbers.includes(4)).forEach(t => {
     const key = t.numbers.join('-') + ':4';
