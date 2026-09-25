@@ -18,8 +18,8 @@ for (const gap of coverage.gaps) {
     windows.push([first, Math.min(first + 499, gap.to)]);
   }
 }
-console.log(`Next ${windows.length} ranges:`, windows.map(pair => pair.join('–')).join(', '));
-if (args.includes('--plan') || !windows.length) process.exit(0);
+console.log(`Next ${windows.length} historical ranges:`, windows.map(pair => pair.join('–')).join(', '));
+if (args.includes('--plan')) process.exit(0);
 
 const { chromium } = await import('playwright');
 const browser = await chromium.launch({ headless: true });
@@ -27,6 +27,20 @@ let completed = 0;
 try {
   const page = await browser.newPage();
   await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  // The official table begins with the latest published draw. Capture new
+  // results before the historical batches so the browser feed stays current.
+  const latestText = await page.locator('tr[data-toggle="tableWinningNumbers"] strong').first().textContent({ timeout: 30000 });
+  const latest = Number(latestText?.match(/\d+/)?.[0]);
+  if (!Number.isSafeInteger(latest) || latest < coverage.last_draw - 500) {
+    throw new Error(`Could not determine the official latest draw: ${latestText}`);
+  }
+  const tail = [];
+  for (let first = coverage.last_draw + 1; first <= latest && tail.length < maxBatches; first += 500) {
+    tail.push([first, Math.min(first + 499, latest)]);
+  }
+  windows.unshift(...tail);
+  windows.length = Math.min(windows.length, maxBatches);
+  console.log(`Collecting ${tail.length} recent and ${windows.length - tail.length} historical ranges; official latest #${latest}`);
   await page.getByRole('radio', { name: 'Draw Range' }).check();
   for (const [first, last] of windows) {
     await page.getByRole('textbox', { name: 'from', exact: true }).fill(String(first));
