@@ -68,7 +68,8 @@ textarea{width:100%;min-height:240px;resize:vertical}
   <div class="header">
     <div class="h1">NJ Quick Draw Progressive Ghost Engine</div>
     <div class="sub">Same ghost-engine idea as your Pick 3 tool, rebuilt for <strong>Quick Draw set play</strong>. Run agents, rank target sets, cache your best portfolios, and analyze your own number sets against imported official history.</div>
-    <div class="disclaimer">This engine is a simulation and ranking tool. It helps you narrow to agent-favored target sets based on your imported history, then carry those same sets into the real game.</div>
+    <div class="disclaimer">This engine is a simulation and ranking tool. Historical rankings cannot predict random draws or improve a ticket's chance of winning. The official archive is still being backfilled; check Data Coverage before interpreting results.</div>
+    <div style="margin-top:10px;"><a href="../" style="color:var(--cyan);">← Pick 3 / Pick 4 / M4L engine</a></div>
   </div>
 
   <div class="summary" id="topSummary"></div>
@@ -96,6 +97,7 @@ const AGENT_OPTIONS = [100,1000,5000,10000,100000,1000000];
 const RANGE_BUCKETS = [[1,10],[11,20],[21,30],[31,40],[41,50],[51,60],[61,70],[71,80]];
 const state = {
   history: loadHistory(),
+  coverage: null,
   settings: loadSettings(),
   engineResult: null,
   portfolios: loadPortfolios(),
@@ -782,6 +784,7 @@ function loadSampleImport(){
 
 function renderDataTab(){
   const stats = buildStats();
+  const archive = state.coverage;
   const sample = `2026-04-04|933555|01 05 09 11 14 19 24 28 31 37 40 44 49 52 58 61 67 72 75 80\n2026-04-04|933556|03 07 12 16 21 26 30 33 39 42 45 48 54 57 63 66 70 73 77 79|bullseye=42|double=66`;
   document.getElementById('pane-data').innerHTML = `
     <div class="grid2">
@@ -803,7 +806,8 @@ function renderDataTab(){
       <div class="card">
         <div class="sectionTitle">Coverage / gap check</div>
         <div class="notice">
-          Loaded draws: <strong>${stats.total.toLocaleString()}</strong><br>
+          Browser history loaded: <strong>${stats.total.toLocaleString()}</strong> (the bundled browser file holds at most the latest 10,000 draws).<br>
+          Verified official archive: <strong>${archive ? archive.loaded_draws.toLocaleString() : 'Loading…'}</strong> draws; <strong>${archive ? archive.missing_draws_between_loaded_endpoints.toLocaleString() : 'Loading…'}</strong> missing between recorded endpoints.<br>
           Latest draw: <strong>${stats.latest ? `${stats.latest.date} · #${stats.latest.draw_no}` : '—'}</strong><br>
           Gap groups detected: <strong>${stats.gaps.length}</strong><br><span class="small">Gap checks only reflect history already stored in this browser.</span>
         </div>
@@ -870,6 +874,14 @@ function refreshAll(){
   attachTabs();
 }
 refreshAll();
+fetch('data/coverage.json', {cache:'no-store'}).then(response => {
+  if(!response.ok) throw new Error('Coverage unavailable');
+  return response.json();
+}).then(coverage => { state.coverage = coverage; renderDataTab(); }).catch(() => {
+  state.coverage = null;
+  const pane = document.getElementById('pane-data');
+  if(pane) pane.insertAdjacentHTML('afterbegin', '<div class="notice warn">Archive coverage could not be loaded; local gap counts may omit earlier history.</div>');
+});
 fetch('data/history.json').then(response => {
   if(!response.ok) throw new Error('Archive unavailable');
   return response.json();
