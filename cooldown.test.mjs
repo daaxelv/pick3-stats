@@ -37,7 +37,7 @@ function harness(initialStorage = {}) {
   });
   context.window = context;
   vm.runInContext(historyScript, context, { filename: 'recent-history.js' });
-  for (const filename of ['crowd-model.js','feed-status.js']) {
+  for (const filename of ['crowd-model.js','feed-status.js','m4l-focus.js']) {
     vm.runInContext(readFileSync(new URL('./'+filename,import.meta.url),'utf8'),context,{filename});
   }
   vm.runInContext(appScript, context, { filename: 'index.html' });
