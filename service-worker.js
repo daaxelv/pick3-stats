@@ -3,7 +3,7 @@
 // and can be added to the home screen, while always fetching the live
 // results CSV from the network first (falling back to cache only if the
 // network is unavailable) so stats never go stale on purpose.
-const CACHE_VERSION = 'ghost-engine-v3-live-crowd';
+const CACHE_VERSION = 'ghost-engine-v4-quickdraw-link';
 const APP_SHELL = [
   './',
   './index.html',
