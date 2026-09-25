@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NJ Quick Draw Progressive Ghost Engine v3</title>
+<style>
+:root {
+  --bg:#061018; --panel:#0d1822; --panel2:#132434; --line:#21435d;
+  --text:#d7e8f4; --muted:#8fb2c8; --cyan:#27d7ff; --green:#46e58c; --gold:#ffd166; --red:#ff6b6b; --purple:#b388ff;
+}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#061018,#081521 35%,#0a1320);color:var(--text);font-family:Arial,sans-serif;}
+.wrap{max-width:1480px;margin:0 auto;padding:22px;}
+.header{padding:20px 0 14px;border-bottom:1px solid var(--line);margin-bottom:18px;}
+.h1{font-size:34px;font-weight:800;letter-spacing:.5px}
+.sub{color:var(--muted);margin-top:6px;line-height:1.5}
+.disclaimer{margin-top:10px;color:var(--gold);font-size:13px;line-height:1.45}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:18px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1.4px}
+.v{font-size:24px;font-weight:800;margin-top:6px;color:var(--cyan)}
+.notice{padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#0c1a27;color:var(--muted);line-height:1.55}
+.notice strong{color:var(--text)}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+select,button,input,textarea{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px}
+button{cursor:pointer;font-weight:700}
+button.primary{background:linear-gradient(135deg,var(--cyan),#0aa7d3);color:#021018;border:none}
+button.secondary{background:linear-gradient(135deg,var(--gold),#d29d17);color:#201400;border:none}
+button.ghostBtn{background:var(--panel2);color:var(--muted)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 18px}
+.tab{padding:10px 16px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);cursor:pointer}
+.tab.active{background:#102638;color:var(--cyan);border-color:var(--cyan)}
+.tabpane{display:none}.tabpane.active{display:block}
+.grid2{display:grid;grid-template-columns:1.15fr .85fr;gap:16px} @media (max-width:1100px){.grid2{grid-template-columns:1fr}}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px} @media (max-width:900px){.cols{grid-template-columns:1fr}}
+.sectionTitle{font-size:18px;font-weight:800;margin:0 0 12px;color:var(--cyan)}
+.tableWrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:10px 12px;border-bottom:1px solid #1a3245;vertical-align:top}
+th{background:#0f2030;color:var(--muted);text-transform:uppercase;font-size:11px;letter-spacing:1px;position:sticky;top:0}
+tr:hover td{background:#0d1c2b}
+.badges{display:flex;gap:6px;flex-wrap:wrap}.badge{padding:2px 8px;border-radius:999px;font-size:11px;border:1px solid}
+.b-green{color:var(--green);border-color:#2f7f54;background:#0d2016}
+.b-gold{color:var(--gold);border-color:#8a6a20;background:#221a08}
+.b-purple{color:var(--purple);border-color:#6f58a4;background:#181129}
+.b-red{color:var(--red);border-color:#8a3b3b;background:#281011}
+.small{font-size:12px;color:var(--muted)}
+.good{color:var(--green)} .warn{color:var(--gold)} .danger{color:var(--red)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.footerSpace{height:40px}
+textarea{width:100%;min-height:240px;resize:vertical}
+.pillRow{display:flex;gap:8px;flex-wrap:wrap}
+.pill{display:inline-flex;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:#0d1c2b;color:var(--muted);font-size:12px}
+.codeBox{white-space:pre-wrap;background:#07131d;border:1px solid var(--line);padding:12px 14px;border-radius:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#b6cfdf}
+.setDisplay{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:26px;font-weight:800;letter-spacing:2px;color:var(--gold);line-height:1.35}
+.combo{font-size:24px;font-weight:900;letter-spacing:2px;color:var(--gold);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;line-height:1.4}
+.planGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.plan{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:14px}
+.plan.top{border-color:var(--gold)}
+.meta{color:var(--muted);font-size:13px;line-height:1.5}
+.flexBetween{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.hr{height:1px;background:var(--line);margin:14px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="h1">NJ Quick Draw Progressive Ghost Engine</div>
+    <div class="sub">Same ghost-engine idea as your Pick 3 tool, rebuilt for <strong>Quick Draw set play</strong>. Run agents, rank target sets, cache your best portfolios, and analyze your own number sets against imported official history.</div>
+    <div class="disclaimer">This engine is a simulation and ranking tool. Historical rankings cannot predict random draws or improve a ticket's chance of winning. The official archive is still being backfilled; check Data Coverage before interpreting results.</div>
+    <div style="margin-top:10px;"><a href="../" style="color:var(--cyan);">← Pick 3 / Pick 4 / M4L engine</a></div>
+  </div>
+
+  <div class="summary" id="topSummary"></div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-tab="engine">Engine</button>
+    <button class="tab" data-tab="portfolio">Portfolio Ladder</button>
+    <button class="tab" data-tab="lab">Set Lab</button>
+    <button class="tab" data-tab="data">Data Coverage</button>
+    <button class="tab" data-tab="rules">Game Notes</button>
+  </div>
+
+  <div class="tabpane active" id="pane-engine"></div>
+  <div class="tabpane" id="pane-portfolio"></div>
+  <div class="tabpane" id="pane-lab"></div>
+  <div class="tabpane" id="pane-data"></div>
+  <div class="tabpane" id="pane-rules"></div>
+  <div class="footerSpace"></div>
+</div>
+<script>
+const STORAGE_KEY = 'nj_qd_progressive_history_v2';
+const SETTINGS_KEY = 'nj_qd_progressive_settings_v2';
+const PORTFOLIO_KEY = 'nj_qd_progressive_portfolios_v2';
+const AGENT_OPTIONS = [100,1000,5000,10000,100000,1000000];
+const RANGE_BUCKETS = [[1,10],[11,20],[21,30],[31,40],[41,50],[51,60],[61,70],[71,80]];
+const state = {
+  history: loadHistory(),
+  coverage: null,
+  settings: loadSettings(),
+  engineResult: null,
+  portfolios: loadPortfolios(),
+  currentTab: 'engine'
+};
+
+function loadHistory(){
+  try{ const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : []; } catch(e){ return []; }
+}
+function saveHistory(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state.history)); }
+function loadSettings(){
+  try{
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    return raw ? JSON.parse(raw) : { spotCount:9, agents:100000, mode:'ghost' };
+  } catch(e){ return { spotCount:9, agents:100000, mode:'ghost' }; }
+}
+function saveSettings(){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings)); }
+function loadPortfolios(){
+  try{ const raw = localStorage.getItem(PORTFOLIO_KEY); return raw ? JSON.parse(raw) : {}; } catch(e){ return {}; }
+}
+function savePortfolios(){ localStorage.setItem(PORTFOLIO_KEY, JSON.stringify(state.portfolios)); }
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+function sortNums(arr){ return [...arr].map(Number).filter(n=>n>=1&&n<=80).sort((a,b)=>a-b); }
+function uniqSorted(arr){ return [...new Set(sortNums(arr))]; }
+function setKey(arr){ return uniqSorted(arr).map(pad2).join('-'); }
+function displaySet(arr){ return uniqSorted(arr).map(pad2).join(' '); }
+function pairKey(a,b){ return a<b ? `${pad2(a)}-${pad2(b)}` : `${pad2(b)}-${pad2(a)}`; }
+function mean(arr){ return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
+function percentile(vals, p){
+  if(!vals.length) return 0;
+  const a=[...vals].sort((x,y)=>x-y);
+  const idx=Math.min(a.length-1, Math.max(0, Math.floor((a.length-1)*p)));
+  return a[idx];
+}
+
+function buildStats(){
+  const h = [...state.history].sort((a,b)=> (a.date + String(a.draw_no).padStart(8,'0')).localeCompare(b.date + String(b.draw_no).padStart(8,'0')));
+  const numFreq = Array(81).fill(0);
+  const numLastSeen = Array(81).fill(-1);
+  const pairFreq = new Map();
+  const pairLastSeen = new Map();
+  const setFreq = new Map();
+  const recentWindow = h.slice(-50);
+  const recentCounts = Array(81).fill(0);
+
+  h.forEach((draw, idx)=>{
+    const nums = uniqSorted(draw.numbers || []);
+    nums.forEach(n=>{ numFreq[n]++; numLastSeen[n]=idx; });
+    for(let i=0;i<nums.length;i++){
+      for(let j=i+1;j<nums.length;j++){
+        const k = pairKey(nums[i], nums[j]);
+        pairFreq.set(k, (pairFreq.get(k)||0)+1);
+        pairLastSeen.set(k, idx);
+      }
+    }
+    const sk = setKey(nums);
+    setFreq.set(sk, (setFreq.get(sk)||0)+1);
+  });
+  recentWindow.forEach(draw=> uniqSorted(draw.numbers||[]).forEach(n=> recentCounts[n]++));
+
+  const total = h.length;
+  const numOverdue = Array(81).fill(total+1);
+  for(let n=1;n<=80;n++) numOverdue[n] = numLastSeen[n]===-1 ? total+1 : (total-1-numLastSeen[n]);
+  const latest = h.length ? h[h.length-1] : null;
+  let gaps = [];
+  for(let i=1;i<h.length;i++){
+    const prev = Number(h[i-1].draw_no||0), cur = Number(h[i].draw_no||0);
+    if(prev && cur && cur > prev+1) gaps.push({from:prev+1,to:cur-1,count:cur-prev-1});
+  }
+  return { history:h, total, latest, numFreq, numOverdue, pairFreq, pairLastSeen, setFreq, recentCounts, gaps };
+}
+
+function rangeBalanceScore(nums){
+  const counts = RANGE_BUCKETS.map(([a,b])=> nums.filter(n=>n>=a && n<=b).length);
+  const target = nums.length/8;
+  const spreadPenalty = counts.reduce((s,c)=> s + Math.abs(c-target), 0);
+  return 1/(1+spreadPenalty);
+}
+function consecutivePenalty(nums){
+  let penalty = 0;
+  for(let i=1;i<nums.length;i++) if(nums[i]===nums[i-1]+1) penalty += 1;
+  return penalty;
+}
+function duplicateDrawPenalty(nums, stats){ return stats.setFreq.get(setKey(nums)) || 0; }
+function pairGhostScore(nums, stats){
+  if(nums.length < 2) return 0;
+  const vals = [];
+  for(let i=0;i<nums.length;i++){
+    for(let j=i+1;j<nums.length;j++){
+      const k = pairKey(nums[i], nums[j]);
+      const freq = stats.pairFreq.get(k) || 0;
+      const last = stats.pairLastSeen.has(k) ? stats.pairLastSeen.get(k) : -1;
+      const overdue = last===-1 ? stats.total+1 : (stats.total-1-last);
+      vals.push((overdue*0.85) - (freq*1.5));
+    }
+  }
+  return mean(vals);
+}
+function scoreCandidate(nums, stats, mode){
+  const n = uniqSorted(nums);
+  const avgOverdue = mean(n.map(x=>stats.numOverdue[x]||0));
+  const avgFreq = mean(n.map(x=>stats.numFreq[x]||0));
+  const avgRecent = mean(n.map(x=>stats.recentCounts[x]||0));
+  const pairScore = pairGhostScore(n, stats);
+  const balance = rangeBalanceScore(n);
+  const consecutive = consecutivePenalty(n);
+  const duplicatePenalty = duplicateDrawPenalty(n, stats);
+  const sumVal = n.reduce((a,b)=>a+b,0);
+  const sumPenalty = Math.abs(sumVal - (n.length*40.5));
+  let score = 0;
+  if(mode==='ghost') score = avgOverdue*2.2 - avgFreq*2.1 - avgRecent*4.5 + pairScore*0.9 + balance*12 - consecutive*3 - duplicatePenalty*10 - sumPenalty*0.07;
+  else if(mode==='cold') score = avgOverdue*2.6 - avgFreq*2.6 - avgRecent*4.8 + balance*10 - consecutive*4 - duplicatePenalty*10 - sumPenalty*0.08;
+  else if(mode==='balanced') score = avgOverdue*1.5 - avgFreq*1.25 - avgRecent*2.8 + pairScore*0.65 + balance*11 - consecutive*2 - duplicatePenalty*10 - sumPenalty*0.05;
+  else score = avgOverdue*1.1 - avgFreq*0.8 - avgRecent*1.8 + balance*13 - consecutive*1.5 - duplicatePenalty*10;
+  return {
+    nums:n,
+    score,
+    avgOverdue:+avgOverdue.toFixed(2),
+    avgFreq:+avgFreq.toFixed(2),
+    avgRecent:+avgRecent.toFixed(2),
+    pairScore:+pairScore.toFixed(2),
+    balance:+balance.toFixed(3),
+    sumVal,
+    duplicatePenalty,
+    repeatedHistory: duplicatePenalty>0
+  };
+}
+function weightedPickNumbers(count, stats, mode){
+  const pool = [];
+  for(let n=1;n<=80;n++){
+    const overdue = stats.numOverdue[n] || 0;
+    const freq = stats.numFreq[n] || 0;
+    const recent = stats.recentCounts[n] || 0;
+    let weight = 18 + overdue*1.3 - freq*0.75 - recent*2.4;
+    if(mode==='cold') weight += overdue*0.45 - recent*0.8;
+    if(mode==='balanced') weight += 4;
+    if(mode==='spread') weight += 2;
+    pool.push({n, weight: Math.max(1, weight)});
+  }
+  const chosen = [];
+  const used = new Set();
+  for(let i=0;i<count;i++){
+    let totalW = 0;
+    for(const row of pool) if(!used.has(row.n)) totalW += row.weight;
+    let r = Math.random()*totalW;
+    let pickN = null;
+    for(const row of pool){
+      if(used.has(row.n)) continue;
+      r -= row.weight;
+      if(r<=0){ pickN=row.n; break; }
+    }
+    if(pickN===null){ for(const row of pool){ if(!used.has(row.n)){ pickN=row.n; break; } } }
+    used.add(pickN);
+    chosen.push(pickN);
+  }
+  return sortNums(chosen);
+}
+
+function simulateAgentRun(agentCount, spotCount, mode, keep=100){
+  const stats = buildStats();
+  const best = new Map();
+  for(let i=0;i<agentCount;i++){
+    const nums = weightedPickNumbers(spotCount, stats, mode);
+    const scored = scoreCandidate(nums, stats, mode);
+    const key = setKey(nums);
+    const old = best.get(key);
+    if(!old || scored.score > old.score) best.set(key, scored);
+  }
+  const top = [...best.values()].sort((a,b)=>b.score-a.score).slice(0, keep);
+  const scoreVals = top.map(x=>x.score);
+  return {
+    generated: new Date().toISOString(),
+    spotCount, agentCount, mode, top,
+    thresholds: {
+      q25: percentile(scoreVals, 0.25),
+      q50: percentile(scoreVals, 0.50),
+      q75: percentile(scoreVals, 0.75)
+    }
+  };
+}
+
+function runEngine(){
+  const spotCount = Number(document.getElementById('spotCount').value);
+  const agentCount = Number(document.getElementById('agentCount').value);
+  const mode = document.getElementById('engineMode').value;
+  state.settings = { spotCount, agents: agentCount, mode };
+  saveSettings();
+  const status = document.getElementById('runStatus');
+  status.textContent = 'Running agent simulation…';
+  setTimeout(()=>{
+    const result = simulateAgentRun(agentCount, spotCount, mode, 100);
+    state.engineResult = result;
+    cachePortfolio(result);
+    status.innerHTML = `<span class="good">Done.</span> Evaluated ${agentCount.toLocaleString()} agents and cached this run in the portfolio ladder.`;
+    renderEngineResults();
+    renderSummary();
+    renderPortfolioTab();
+  }, 20);
+}
+
+function cachePortfolio(result){
+  const key = `${result.spotCount}|${result.mode}|${result.agentCount}`;
+  state.portfolios[key] = result;
+  savePortfolios();
+}
+
+function applyPreset(n){
+  const sel = document.getElementById('agentCount');
+  if(sel) sel.value = String(n);
+  runEngine();
+}
+
+function buildLadder(){
+  const spotCount = Number(document.getElementById('spotCount').value);
+  const mode = document.getElementById('engineMode').value;
+  const status = document.getElementById('runStatus');
+  status.textContent = 'Building 100 / 1,000 / 5,000 / 10,000 ladder…';
+  const ladder = [100,1000,5000,10000];
+  let i = 0;
+  function step(){
+    const n = ladder[i];
+    const result = simulateAgentRun(n, spotCount, mode, 100);
+    cachePortfolio(result);
+    state.engineResult = result;
+    i += 1;
+    if(i < ladder.length){
+      status.textContent = `Built ${n.toLocaleString()} agents. Continuing ladder…`;
+      setTimeout(step, 10);
+    } else {
+      status.innerHTML = '<span class="good">Ladder ready.</span> Cached 100, 1,000, 5,000, and 10,000-agent portfolios.';
+      renderEngineResults();
+      renderSummary();
+      renderPortfolioTab();
+    }
+  }
+  setTimeout(step, 10);
+}
+
+function renderSummary(){
+  const stats = buildStats();
+  const draws = stats.total;
+  const latest = stats.latest;
+  const hottest = draws ? [...Array(80).keys()].map(i=>i+1).sort((a,b)=>stats.numFreq[b]-stats.numFreq[a])[0] : null;
+  const coldest = draws ? [...Array(80).keys()].map(i=>i+1).sort((a,b)=>stats.numFreq[a]-stats.numFreq[b])[0] : null;
+  const mostOverdue = draws ? [...Array(80).keys()].map(i=>i+1).sort((a,b)=>stats.numOverdue[b]-stats.numOverdue[a])[0] : null;
+  const portfolioCount = Object.keys(state.portfolios).length;
+  const cards = [
+    ['Loaded draws', draws ? draws.toLocaleString() : '0'],
+    ['Date range', latest ? `${stats.history[0].date} → ${latest.date}` : 'No history'],
+    ['Most overdue number', mostOverdue ? `${pad2(mostOverdue)} · ${stats.numOverdue[mostOverdue]} draws` : '—'],
+    ['Hottest number', hottest ? `${pad2(hottest)} · ${stats.numFreq[hottest]} hits` : '—'],
+    ['Coldest number', coldest ? `${pad2(coldest)} · ${stats.numFreq[coldest]} hits` : '—'],
+    ['Saved portfolios', String(portfolioCount)]
+  ];
+  document.getElementById('topSummary').innerHTML = cards.map(([k,v])=>`<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+}
+
+function renderEngineTab(){
+  const s = state.settings;
+  document.getElementById('pane-engine').innerHTML = `
+    <div class="notice" style="margin-bottom:16px;">
+      <strong>How to use this like your Pick 3 engine:</strong> import official Quick Draw history, pick the target set size you want to chase, run the agents, then carry the highest-ranked sets into your real-world play list.
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <div class="sectionTitle">Ghost simulation controls</div>
+        <div class="controls">
+          <label class="small">Target set size</label>
+          <select id="spotCount">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<option value="${n}" ${n===s.spotCount?'selected':''}>${n}-spot set</option>`).join('')}</select>
+          <label class="small">Agents</label>
+          <select id="agentCount">${AGENT_OPTIONS.map(n=>`<option value="${n}" ${n===s.agents?'selected':''}>${n.toLocaleString()}</option>`).join('')}</select>
+          <label class="small">Mode</label>
+          <select id="engineMode">
+            <option value="ghost" ${s.mode==='ghost'?'selected':''}>Ghost hunt</option>
+            <option value="balanced" ${s.mode==='balanced'?'selected':''}>Balanced</option>
+            <option value="cold" ${s.mode==='cold'?'selected':''}>Cold / overdue</option>
+            <option value="spread" ${s.mode==='spread'?'selected':''}>Spread / anti-cluster</option>
+          </select>
+        </div>
+        <div class="controls">
+          <button class="primary" onclick="runEngine()">Run current engine</button>
+          <button class="secondary" onclick="buildLadder()">Build 100 → 10,000 ladder</button>
+        </div>
+        <div class="controls">
+          ${AGENT_OPTIONS.map(n=>`<button class="ghostBtn" onclick="applyPreset(${n})">${n>=1000 ? (n/1000)+'K' : n}</button>`).join('')}
+        </div>
+        <div class="pillRow" style="margin-top:8px;">
+          <span class="pill">Top 100 targets</span>
+          <span class="pill">Repeat-set penalty</span>
+          <span class="pill">Overdue scoring</span>
+          <span class="pill">Pair rarity</span>
+          <span class="pill">Range balance</span>
+          <span class="pill">5K preset included</span>
+        </div>
+        <div id="runStatus" class="small" style="margin-top:12px;"></div>
+      </div>
+      <div class="card">
+        <div class="sectionTitle">What gets ranked</div>
+        <div class="notice">
+          The agents generate candidate sets and score them using number overdue pressure, frequency fade, recent-hit pressure, pair rarity, range balance, consecutive-number penalties, and exact-repeat penalties. The highest-scoring sets become your current target portfolio.
+        </div>
+        <div class="hr"></div>
+        <div class="small">Best starting point for a jackpot-style chase in this game: try <strong>9-spot</strong>, then run <strong>100K</strong> or <strong>1M</strong> agents if your browser can handle it.</div>
+      </div>
+    </div>
+    <div id="engineResults" style="margin-top:16px;"></div>
+  `;
+  renderEngineResults();
+}
+
+function renderEngineResults(){
+  const wrap = document.getElementById('engineResults');
+  if(!wrap) return;
+  if(!state.engineResult || !state.engineResult.top || !state.engineResult.top.length){
+    wrap.innerHTML = `<div class="card"><div class="notice">No engine run yet. Import history first, then run your agents.</div></div>`;
+    return;
+  }
+  const res = state.engineResult;
+  const top3 = res.top.slice(0,3);
+  const rows = res.top.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td class="mono">${displaySet(r.nums)}</td>
+      <td>${r.score.toFixed(2)}</td>
+      <td>${r.avgOverdue}</td>
+      <td>${r.avgFreq}</td>
+      <td>${r.avgRecent}</td>
+      <td>${r.pairScore}</td>
+      <td>${r.sumVal}</td>
+      <td>${r.repeatedHistory ? '<span class="badge b-red">seen before</span>' : '<span class="badge b-green">fresh set</span>'}</td>
+    </tr>
+  `).join('');
+  wrap.innerHTML = `
+    <div class="planGrid" style="margin-bottom:16px;">
+      ${top3.map((r,i)=>`
+        <div class="plan ${i===0?'top':''}">
+          <div class="k">Top target ${i+1}</div>
+          <div class="combo">${displaySet(r.nums)}</div>
+          <div class="meta">
+            Ghost score: <strong>${r.score.toFixed(2)}</strong><br>
+            Avg overdue: ${r.avgOverdue} draws<br>
+            Avg frequency: ${r.avgFreq}<br>
+            Recent pressure: ${r.avgRecent}<br>
+            Pair rarity: ${r.pairScore}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="cols" style="margin-bottom:16px;">
+      <div class="card">
+        <div class="sectionTitle">A. Current run snapshot</div>
+        <div class="notice">
+          <strong>Set size:</strong> ${res.spotCount}-spot<br>
+          <strong>Agents:</strong> ${res.agentCount.toLocaleString()}<br>
+          <strong>Mode:</strong> ${res.mode}<br>
+          <strong>Median top-100 score:</strong> ${res.thresholds.q50.toFixed(2)}
+        </div>
+      </div>
+      <div class="card">
+        <div class="sectionTitle">B. Portfolio note</div>
+        <div class="notice">
+          This run is cached in <strong>Portfolio Ladder</strong>. Build more presets and compare which target set keeps surfacing across 100, 1,000, 5,000, 10,000, 100,000, and 1,000,000 agents.
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="flexBetween">
+        <div class="sectionTitle">C. Top 100 ranked sets</div>
+        <div class="small mono">Generated ${res.generated.replace('T',' ').replace('Z',' UTC')}</div>
+      </div>
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Set</th><th>Ghost score</th><th>Avg overdue</th><th>Avg freq</th><th>Recent</th><th>Pair</th><th>Sum</th><th>Flags</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderPortfolioTab(){
+  const wrap = document.getElementById('pane-portfolio');
+  const keys = Object.keys(state.portfolios).sort((a,b)=>{
+    const aa=Number(a.split('|')[2]), bb=Number(b.split('|')[2]);
+    return aa-bb;
+  });
+  if(!keys.length){
+    wrap.innerHTML = `<div class="card"><div class="notice">No saved portfolios yet. Run the engine or build the ladder first.</div></div>`;
+    return;
+  }
+  const cards = keys.map(key=>{
+    const res = state.portfolios[key];
+    const best = res.top[0];
+    return `
+      <div class="plan ${res.agentCount===10000 || res.agentCount===100000 ? 'top':''}">
+        <div class="k">D.${AGENT_OPTIONS.indexOf(res.agentCount)+1 > 0 ? AGENT_OPTIONS.indexOf(res.agentCount)+1 : 'X'} · ${res.agentCount.toLocaleString()} agents</div>
+        <div class="combo">${displaySet(best.nums)}</div>
+        <div class="meta">
+          Set size: ${res.spotCount}-spot<br>
+          Mode: ${res.mode}<br>
+          Best score: ${best.score.toFixed(2)}<br>
+          Generated: ${res.generated.slice(0,19).replace('T',' ')}
+        </div>
+      </div>
+    `;
+  }).join('');
+  const rows = keys.map(key=>{
+    const res = state.portfolios[key];
+    const best = res.top[0];
+    return `<tr>
+      <td>${res.agentCount.toLocaleString()}</td>
+      <td>${res.spotCount}-spot</td>
+      <td>${res.mode}</td>
+      <td class="mono">${displaySet(best.nums)}</td>
+      <td>${best.score.toFixed(2)}</td>
+      <td>${best.avgOverdue}</td>
+      <td>${best.avgFreq}</td>
+      <td>${best.avgRecent}</td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `
+    <div class="notice" style="margin-bottom:16px;"><strong>D. Portfolio Ladder:</strong> this is your cross-agent comparison board. The goal is to see which target sets keep surviving as the agent count grows.</div>
+    <div class="planGrid" style="margin-bottom:16px;">${cards}</div>
+    <div class="card">
+      <div class="sectionTitle">Saved ladder summary</div>
+      <div class="tableWrap">
+        <table>
+          <thead><tr><th>Agents</th><th>Set size</th><th>Mode</th><th>Best set</th><th>Score</th><th>Overdue</th><th>Freq</th><th>Recent</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function parseNumberSet(text){
+  const nums = (text.match(/\d{1,2}/g)||[]).map(Number).filter(n=>n>=1&&n<=80);
+  return uniqSorted(nums);
+}
+
+function analyzeSet(){
+  const stats = buildStats();
+  const expectedCount = Number(document.getElementById('labSpotCount').value);
+  const nums = parseNumberSet(document.getElementById('labNumbers').value);
+  const outId = 'labResults';
+  if(nums.length !== expectedCount){
+    document.getElementById(outId).innerHTML = `<div class="notice danger">Enter exactly ${expectedCount} unique numbers between 1 and 80.</div>`;
+    return;
+  }
+  const scored = scoreCandidate(nums, stats, 'ghost');
+  const recentDrawMatches = stats.history.slice(-25).map(draw=>{
+    const matches = nums.filter(n=>draw.numbers.includes(n));
+    return {date:draw.date, draw_no:draw.draw_no, matches, count:matches.length};
+  }).filter(x=>x.count>0).sort((a,b)=>b.count-a.count || (b.draw_no-a.draw_no)).slice(0,12);
+  const hotList = nums.map(n=>`${pad2(n)}(${stats.numFreq[n]||0})`).join(' · ');
+  const overdueList = nums.map(n=>`${pad2(n)}(${stats.numOverdue[n]||stats.total+1})`).join(' · ');
+  const histRepeat = stats.setFreq.get(setKey(nums)) || 0;
+
+  document.getElementById(outId).innerHTML = `
+    <div class="cols">
+      <div class="card">
+        <div class="sectionTitle">Set analysis</div>
+        <div class="setDisplay">${displaySet(nums)}</div>
+        <div class="notice" style="margin-top:12px;">
+          <strong>Ghost score:</strong> ${scored.score.toFixed(2)}<br>
+          <strong>Avg overdue:</strong> ${scored.avgOverdue} draws<br>
+          <strong>Avg frequency:</strong> ${scored.avgFreq}<br>
+          <strong>Recent pressure:</strong> ${scored.avgRecent}<br>
+          <strong>Pair rarity:</strong> ${scored.pairScore}<br>
+          <strong>Exact set repeats in imported history:</strong> ${histRepeat}
+        </div>
+      </div>
+      <div class="card">
+        <div class="sectionTitle">Number profile</div>
+        <div class="notice"><strong>Frequencies:</strong><br>${hotList}</div>
+        <div class="notice" style="margin-top:12px;"><strong>Overdue counts:</strong><br>${overdueList}</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <div class="sectionTitle">Recent draw overlap</div>
+      <div class="tableWrap">
+        <table>
+          <thead><tr><th>Date</th><th>Draw #</th><th>Matched count</th><th>Numbers</th></tr></thead>
+          <tbody>
+            ${recentDrawMatches.length ? recentDrawMatches.map(r=>`<tr><td>${r.date}</td><td>${r.draw_no}</td><td>${r.count}</td><td class="mono">${r.matches.map(pad2).join(' ')}</td></tr>`).join('') : '<tr><td colspan="4">No overlaps found in the last 25 imported draws.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderLabTab(){
+  document.getElementById('pane-lab').innerHTML = `
+    <div class="grid2">
+      <div class="card">
+        <div class="sectionTitle">Set Lab</div>
+        <div class="notice">Paste any target set here and compare it against your imported history.</div>
+        <div class="controls" style="margin-top:14px;">
+          <label class="small">Set size</label>
+          <select id="labSpotCount">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<option value="${n}" ${n===9?'selected':''}>${n}-spot</option>`).join('')}</select>
+        </div>
+        <textarea id="labNumbers" placeholder="Example: 03 11 17 25 34 46 58 63 77"></textarea>
+        <div class="controls" style="margin-top:12px;">
+          <button class="primary" onclick="analyzeSet()">Analyze set</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="sectionTitle">What this is for</div>
+        <div class="notice">
+          Use this when you already have a candidate set from the engine, from a ticket, or from your own shortlist and want to see how it grades under the ghost model before you decide to carry it into play.
+        </div>
+      </div>
+    </div>
+    <div id="labResults" style="margin-top:16px;"></div>
+  `;
+}
+
+function exportHistory(){
+  const blob = new Blob([JSON.stringify(state.history,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'nj_quickdraw_history_export.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function clearHistory(){
+  if(!confirm('Clear all imported Quick Draw history from this browser?')) return;
+  state.history = [];
+  saveHistory();
+  refreshAll();
+}
+function clearPortfolios(){
+  if(!confirm('Clear all saved portfolio runs from this browser?')) return;
+  state.portfolios = {};
+  savePortfolios();
+  renderSummary();
+  renderPortfolioTab();
+}
+function mergeDraws(newDraws, persist=true){
+  const map = new Map(state.history.map(d=>[String(d.draw_no), d]));
+  newDraws.forEach(d=> map.set(String(d.draw_no), d));
+  state.history = [...map.values()].sort((a,b)=> Number(a.draw_no)-Number(b.draw_no));
+  if(persist) saveHistory();
+}
+function parseImportText(text){
+  const lines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  const out = [];
+  for(const line of lines){
+    const parts = line.split('|').map(s=>s.trim());
+    let date = '', draw_no = '', nums = [], bullseye = null, doubleBullseye = null, source='manual-import';
+    if(parts.length >= 3){
+      date = parts[0]; draw_no = parts[1]; nums = parseNumberSet(parts[2]);
+      for(let i=3;i<parts.length;i++){
+        const p = parts[i].toLowerCase();
+        if(p.startsWith('bullseye=')) bullseye = Number(p.split('=')[1]);
+        if(p.startsWith('double=') || p.startsWith('doublebullseye=')) doubleBullseye = Number(p.split('=')[1]);
+      }
+    } else {
+      const dateMatch = line.match(/\b\d{4}-\d{2}-\d{2}\b/);
+      const drawMatch = line.match(/draw\s*#?\s*[-: ]\s*(\d+)/i) || line.match(/\b(\d{5,})\b/);
+      date = dateMatch ? dateMatch[0] : '';
+      draw_no = drawMatch ? drawMatch[1] : String(Date.now()+Math.random()).replace('.','').slice(0,10);
+      nums = parseNumberSet(line);
+    }
+    if(!date || nums.length !== 20) continue;
+    out.push({ date, draw_no, numbers: nums, bullseye, doubleBullseye, source });
+  }
+  return out;
+}
+function importHistory(){
+  const text = document.getElementById('importBox').value;
+  const draws = parseImportText(text);
+  if(!draws.length){
+    document.getElementById('importStatus').innerHTML = '<span class="danger">No valid 20-number draws were detected. Use the sample format shown below.</span>';
+    return;
+  }
+  mergeDraws(draws);
+  document.getElementById('importStatus').innerHTML = `<span class="good">Imported ${draws.length} draws.</span>`;
+  refreshAll();
+}
+function normalizeDate(raw){
+  if(!raw) return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(raw)){
+    const [m,d,y] = raw.split('/');
+    return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  }
+  return '';
+}
+function collectCandidateNumberRuns(txt){
+  const compact = txt.replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+  const raw = compact.match(/\b\d{1,2}\b/g) || [];
+  const nums = raw.map(n=>Number(n)).filter(n=>n>=1 && n<=80);
+  const out = [];
+  for(let i=0;i<=nums.length-20;i++){
+    const slice = nums.slice(i, i+20);
+    if(new Set(slice).size === 20) out.push(slice);
+  }
+  return out;
+}
+function pickBest20NumberRun(txt){
+  const candidates = collectCandidateNumberRuns(txt);
+  if(!candidates.length) return [];
+  const hit = candidates.find(run => {
+    const joined = run.map(n=>String(n).padStart(2,'0')).join(' ');
+    const idx = txt.indexOf(joined.split(' ')[0]);
+    const local = idx >= 0 ? txt.slice(Math.max(0, idx-220), Math.min(txt.length, idx+220)) : txt.slice(0, 440);
+    return /current winning numbers|latest results|quick draw|watch current draw/i.test(local);
+  });
+  return (hit || candidates[0]).slice().sort((a,b)=>a-b);
+}
+function parseCurrentDrawFromPage(txt){
+  let draw_no = '';
+  const drawMatch = txt.match(/DRAW\s*#\s*[-: ]\s*(\d{5,})/i) || txt.match(/draw\s*number\s*[-: ]\s*(\d{5,})/i);
+  if(drawMatch) draw_no = drawMatch[1];
+  let date = '';
+  const dateMatch = txt.match(/(\d{4}-\d{2}-\d{2})/) || txt.match(/(\d{2}\/\d{2}\/\d{4})/);
+  if(dateMatch) date = normalizeDate(dateMatch[1]);
+  const nums = pickBest20NumberRun(txt);
+  if(!date || nums.length !== 20) return null;
+  if(!draw_no) draw_no = `latest-${date}`;
+  return { date, draw_no, numbers: nums, bullseye:null, doubleBullseye:null, source:'official-page-sync' };
+}
+async function fetchTextLoose(url){
+  const attempts = [
+    url,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    `https://corsproxy.io/?${encodeURIComponent(url)}`
+  ];
+  let lastErr = '';
+  for(const candidate of attempts){
+    try{
+      const res = await fetch(candidate, { cache:'no-store' });
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const txt = await res.text();
+      if(txt && txt.length > 100) return txt;
+    }catch(err){
+      lastErr = err && err.message ? err.message : String(err || 'fetch failed');
+    }
+  }
+  throw new Error(lastErr || 'fetch failed');
+}
+async function syncCurrentFromOfficial(){
+  const status = document.getElementById('importStatus');
+  const sources = [
+    'https://www.njlottery.com/en-us/drawgames/quickDraw.html',
+    'https://www.njlottery.com/en-us/drawgames.html',
+    'https://www.njlottery.com/'
+  ];
+  status.innerHTML = '<span class="warn">Trying latest-draw sync…</span>';
+  const notes = [];
+  for(const src of sources){
+    try{
+      const txt = await fetchTextLoose(src);
+      const parsed = parseCurrentDrawFromPage(txt);
+      if(parsed){
+        mergeDraws([parsed]);
+        status.innerHTML = `<span class="good">Synced latest draw from official pages: ${parsed.date} · #${parsed.draw_no}.</span>`;
+        refreshAll();
+        return;
+      }
+      notes.push(`No 20-number latest draw block found in ${src}`);
+    }catch(err){
+      notes.push(`${src}: ${err && err.message ? err.message : err}`);
+    }
+  }
+  const local = location.protocol === 'file:' ? ' Downloaded HTML files often cannot fetch lottery pages directly because of browser cross-origin restrictions.' : '';
+  status.innerHTML = `<span class="warn">Latest-draw sync could not auto-collect data in this browser.${local}</span><br><span class="small">This tool can still import pasted official history. If you copied a watch-draw block or results snippet, paste it below and click Import pasted history.</span>`;
+  console.warn('Quick Draw latest sync failed:', notes);
+}
+
+function loadSampleImport(){
+  const sample = `2026-04-04|933555|01 05 09 11 14 19 24 28 31 37 40 44 49 52 58 61 67 72 75 80
+2026-04-04|933556|03 07 12 16 21 26 30 33 39 42 45 48 54 57 63 66 70 73 77 79|bullseye=42|double=66`;
+  const box = document.getElementById('importBox');
+  if(box) box.value = sample;
+}
+
+function renderDataTab(){
+  const stats = buildStats();
+  const archive = state.coverage;
+  const sample = `2026-04-04|933555|01 05 09 11 14 19 24 28 31 37 40 44 49 52 58 61 67 72 75 80\n2026-04-04|933556|03 07 12 16 21 26 30 33 39 42 45 48 54 57 63 66 70 73 77 79|bullseye=42|double=66`;
+  document.getElementById('pane-data').innerHTML = `
+    <div class="grid2">
+      <div class="card">
+        <div class="sectionTitle">Official history import</div>
+        <div class="notice">The bundled official archive loads automatically. Current coverage has a large historical gap; check the coverage panel before using the statistics. Paste official Quick Draw draw rows here. Best format: <span class="mono">date|draw_no|20 numbers|bullseye=xx|double=yy</span>. BULLSEYE fields are optional. The sync button below tries only the latest official draw, not the full history.</div>
+        <textarea id="importBox" placeholder="${sample}"></textarea>
+        <div class="controls" style="margin-top:12px;">
+          <button class="primary" onclick="importHistory()">Import pasted history</button>
+          <button type="button" class="ghostBtn" onclick="loadSampleImport()">Load sample</button>
+          <button type="button" class="ghostBtn" onclick="syncCurrentFromOfficial()">Try latest-draw sync</button>
+          <button type="button" class="ghostBtn" onclick="exportHistory()">Export history</button>
+          <button type="button" class="ghostBtn" onclick="clearHistory()">Clear history</button>
+          <button type="button" class="ghostBtn" onclick="clearPortfolios()">Clear portfolios</button>
+        </div>
+        <div id="importStatus" class="small" style="margin-top:8px;"></div>
+        <div class="small" style="margin-top:10px;color:var(--muted)">Tip: copied watch-draw text often works even when the site will not auto-fetch from a local HTML file.</div>
+      </div>
+      <div class="card">
+        <div class="sectionTitle">Coverage / gap check</div>
+        <div class="notice">
+          Browser history loaded: <strong>${stats.total.toLocaleString()}</strong> (the bundled browser file holds at most the latest 10,000 draws).<br>
+          Verified official archive: <strong>${archive ? archive.loaded_draws.toLocaleString() : 'Loading…'}</strong> draws; <strong>${archive ? archive.missing_draws_between_loaded_endpoints.toLocaleString() : 'Loading…'}</strong> missing between recorded endpoints.<br>
+          Latest draw: <strong>${stats.latest ? `${stats.latest.date} · #${stats.latest.draw_no}` : '—'}</strong><br>
+          Gap groups detected: <strong>${stats.gaps.length}</strong><br><span class="small">Gap checks only reflect history already stored in this browser.</span>
+        </div>
+        <div class="tableWrap" style="margin-top:12px;">
+          <table>
+            <thead><tr><th>Gap from</th><th>Gap to</th><th>Missing draws</th></tr></thead>
+            <tbody>
+              ${stats.gaps.length ? stats.gaps.slice(0,12).map(g=>`<tr><td>${g.from}</td><td>${g.to}</td><td>${g.count}</td></tr>`).join('') : '<tr><td colspan="3">No draw-number gaps detected in the imported history.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderRulesTab(){
+  document.getElementById('pane-rules').innerHTML = `
+    <div class="cols">
+      <div class="card">
+        <div class="sectionTitle">Quick cost reference</div>
+        <div class="notice">
+          Base wager per draw can be <strong>$1, $2, $3, $4, $5, or $10</strong>.<br>
+          <strong>BULLSEYE</strong> doubles the base cost.<br>
+          <strong>Double BULLSEYE</strong> triples the base cost.<br>
+          <strong>Multiplier</strong> doubles the base cost.<br><br>
+          The page also says E-Z Play can be purchased for <strong>$1, $5, or $10</strong>.
+        </div>
+      </div>
+      <div class="card">
+        <div class="sectionTitle">Game notes</div>
+        <div class="notice">
+          Quick Draw draws <strong>20 numbers from 1 to 80</strong> every 4 minutes. The Quick Draw Progressive page lists the <strong>Progressive Jackpot odds as 1 in 1,380,688</strong>. Use this engine to rank target sets against historical draws and keep your best portfolios together in one place.
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <div class="sectionTitle">Best workflow</div>
+      <div class="notice">
+        1) Import as much official history as you can. 2) Run 9-spot or 10-spot agent simulations. 3) Compare the same target sets across the portfolio ladder. 4) Carry the strongest repeated survivors into your real-world play list.
+      </div>
+    </div>
+  `;
+}
+
+function attachTabs(){
+  document.querySelectorAll('.tab').forEach(btn=>{
+    btn.onclick = () => {
+      document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tabpane').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('pane-'+btn.dataset.tab).classList.add('active');
+      state.currentTab = btn.dataset.tab;
+    };
+  });
+}
+function refreshAll(){
+  renderSummary();
+  renderEngineTab();
+  renderPortfolioTab();
+  renderLabTab();
+  renderDataTab();
+  renderRulesTab();
+  attachTabs();
+}
+refreshAll();
+fetch('data/coverage.json', {cache:'no-store'}).then(response => {
+  if(!response.ok) throw new Error('Coverage unavailable');
+  return response.json();
+}).then(coverage => { state.coverage = coverage; renderDataTab(); }).catch(() => {
+  state.coverage = null;
+  const pane = document.getElementById('pane-data');
+  if(pane) pane.insertAdjacentHTML('afterbegin', '<div class="notice warn">Archive coverage could not be loaded; local gap counts may omit earlier history.</div>');
+});
+fetch('data/history.json').then(response => {
+  if(!response.ok) throw new Error('Archive unavailable');
+  return response.json();
+}).then(draws => {
+  const userDraws = state.history;
+  mergeDraws(draws, false);
+  mergeDraws(userDraws, false);
+  refreshAll();
+}).catch(error => {
+  const status = document.getElementById('importStatus');
+  if(status) status.textContent = 'Bundled history could not load: ' + error.message;
+});
+</script>
+</body>
+</html>
