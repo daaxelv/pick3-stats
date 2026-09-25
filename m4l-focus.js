@@ -48,7 +48,7 @@ function renderM4LFocus(pane, rows) {
     '<strong>Every valid combination has the same chance on the next draw, including combinations drawn before.</strong> Past repeats may feel unlikely, but history does not reduce their chance. This ranking is a way to organize plays, not a forecast.</div>' +
     '<div class="controls" style="margin-top:12px;"><label>Show <select id="m4l-focus-list"><option value="both">Both lists</option><option value="351">351: both high</option><option value="756">756: one high</option></select></label>' +
     '<label>Tickets <select id="m4l-focus-limit"><option value="10">Top 10</option><option value="25">Top 25</option><option value="50">Top 50</option></select></label>' +
-    '<button class="secondary" id="m4l-focus-load">Rank my 04 tickets</button></div>' +
+    '<button class="secondary" id="m4l-focus-load">Rank my 04 tickets</button></div>' 
     '<div id="m4l-focus-results" style="margin-top:12px;"></div>';
   const sim = pane.querySelector('#m4l-sim-card');
   if (sim) pane.insertBefore(card, sim); else pane.appendChild(card);
@@ -62,7 +62,7 @@ async function loadM4LFocus(card, rows) {
   const output = card.querySelector('#m4l-focus-results');
   output.textContent = 'Loading your ticket lists…';
   try {
-    const paths = ['data/m4l/m4l_351_both_high.csv','data/m4l/m4l_756_one_high.csv'];
+        const paths = ['data/m4l_351_both_high.csv','data/m4l_756_one_high.csv'];
     const texts = await Promise.all(paths.map(async path => {
       const response = await fetch(path, {cache:'no-store'});
       if (!response.ok) throw new Error('Could not load ' + path);
