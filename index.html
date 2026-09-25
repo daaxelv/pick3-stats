@@ -32,7 +32,7 @@ body{margin:0;background:linear-gradient(180deg,#061018,#081521 35%,#0a1320);col
 .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
 select,button,input{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;min-height:44px;}
 button{cursor:pointer;font-weight:700} button.primary{background:linear-gradient(135deg,var(--cyan),#0aa7d3);color:#021018;border:none} button.secondary{background:linear-gradient(135deg,var(--gold),#d29d17);color:#201400;border:none}
-.tabs{display:flex;gap:8px;margin:12px 0 18px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;padding-bottom:4px;} .tab{padding:10px 16px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);cursor:pointer;flex:0 0 auto;min-height:44px;white-space:nowrap;} .tab.active{background:#102638;color:var(--cyan);border-color:var(--cyan)}
+.tabs{display:flex;gap:8px;margin:12px 0 18px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;padding-bottom:4px;} .tab,.quickdrawLink{padding:10px 16px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);cursor:pointer;flex:0 0 auto;min-height:44px;white-space:nowrap;} .quickdrawLink{display:inline-flex;align-items:center;text-decoration:none;color:var(--cyan);border-color:var(--cyan)} .tab.active{background:#102638;color:var(--cyan);border-color:var(--cyan)}
 .tabpane{display:none} .tabpane.active{display:block}
 .responsibleFooter{margin-top:24px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:#0c1a27;color:var(--muted);font-size:12px;line-height:1.6;}
 .responsibleFooter strong{color:var(--gold);}
@@ -96,6 +96,7 @@ table{width:100%;border-collapse:collapse;font-size:13px} th,td{padding:10px 12p
     <button class="tab" data-tab="both">Combined Engine</button>
     <button class="tab" data-tab="p4">Pick 4</button>
     <button class="tab" data-tab="m4l">M4L</button>
+    <a class="quickdrawLink" href="quickdraw/">Quick Draw Engine ↗</a>
     <button class="tab" data-tab="tracker">Ticket Tracker</button>
     <button class="tab" data-tab="data">Data Coverage</button>
   </div>
