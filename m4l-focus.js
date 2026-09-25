@@ -62,7 +62,7 @@ async function loadM4LFocus(card, rows) {
   const output = card.querySelector('#m4l-focus-results');
   output.textContent = 'Loading your ticket lists…';
   try {
-    const paths = ['data/m4l/m4l_351_both_high.csv','data/m4l/m4l_756_one_high.csv'];
+    const paths = ['data/m4l_351_both_high.csv','data/m4l_756_one_high.csv'];
     const texts = await Promise.all(paths.map(async path => {
       const response = await fetch(path, {cache:'no-store'});
       if (!response.ok) throw new Error('Could not load ' + path);
