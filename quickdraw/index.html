@@ -61,6 +61,16 @@ textarea{width:100%;min-height:240px;resize:vertical}
 .meta{color:var(--muted);font-size:13px;line-height:1.5}
 .flexBetween{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .hr{height:1px;background:var(--line);margin:14px 0}
+@media (max-width:640px){
+  .wrap{padding:14px;padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right));padding-bottom:max(14px,env(safe-area-inset-bottom))}
+  .h1{font-size:25px}.sub{font-size:13px}.combo,.setDisplay{font-size:20px;letter-spacing:1px;overflow-wrap:anywhere}
+  .tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:5px}
+  .tab{white-space:nowrap;flex:0 0 auto}
+  select,button,input,textarea{font-size:16px;min-height:44px}
+  .controls{align-items:stretch}.controls button,.controls select{flex:1 1 auto}
+  .card,.plan{min-width:0}.tableWrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  th,td{white-space:nowrap;padding:8px}.notice{overflow-wrap:anywhere}
+}
 </style>
 </head>
 <body>
