@@ -1,6 +1,9 @@
 name: Backfill NJ Quick Draw history
 
 on:
+  schedule:
+    # 100 verified 500-draw ranges per run while the archive has gaps.
+    - cron: '17 * * * *'
   pull_request:
     paths:
       - 'quickdraw/**'
@@ -48,13 +51,15 @@ jobs:
           PY
 
   backfill:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -68,7 +73,7 @@ jobs:
       - name: Collect next missing ranges
         id: collector
         continue-on-error: true
-        run: node quickdraw/scripts/collect_official.mjs --max-batches '${{ inputs.batches }}'
+        run: node quickdraw/scripts/collect_official.mjs --max-batches '${{ github.event_name == 'schedule' && '100' || inputs.batches }}'
       - name: Save verified batches
         run: |
           git config user.name "quickdraw-results-bot"
