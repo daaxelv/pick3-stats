@@ -1091,9 +1091,9 @@ function applyLiveRows(rows, nextData, text) {
       dateStart: p4Rows.length ? p4Rows[0].date : '',
       dateEnd: p4Rows.length ? p4Rows[p4Rows.length - 1].date : '',
     };
-    const m4lRows = rows
+    const m4lRows = uniqueM4LDraws(rows
       .filter(r => r.game === 'M4L' && /^\d{1,2}(-\d{1,2}){4}$/.test(r.digits) && /^[1-5]$/.test(r.fireball))
-      .map(r => ({ date: r.date, numbers: r.digits.split('-').map(Number), mb: r.fireball }))
+      .map(r => ({ date: r.date, numbers: r.digits.split('-').map(Number), mb: r.fireball })))
       .sort((a, b) => compareIso(b.date, a.date));
     M4L_INFO = {
       rowCount: m4lRows.length,

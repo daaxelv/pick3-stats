@@ -87,7 +87,17 @@ jobs:
             echo "No new batches."
           else
             git commit -m "Backfill NJ Quick Draw results $(date -u +%F)"
-            git push
+            # Another updater may advance main while this collector runs. Its
+            # next scheduled run will resume at the remaining gap on new main.
+            if ! git push origin HEAD:main; then
+              git fetch origin main
+              if git merge-base --is-ancestor HEAD^ origin/main; then
+                echo "::warning::Main advanced during collection; skip stale batches. The next run will retry from current coverage."
+              else
+                echo "Push failed without a newer main; investigate permissions or network."
+                exit 1
+              fi
+            fi
           fi
       - name: Report any collection failure
         if: steps.collector.outcome == 'failure'
