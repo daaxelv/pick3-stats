@@ -47,10 +47,12 @@ try {
     await page.getByRole('textbox', { name: 'to', exact: true }).fill(String(last));
     await page.getByRole('tabpanel').getByRole('button', { name: 'SEARCH NOW' }).click();
     const rows = page.locator('tr[data-toggle="tableWinningNumbers"]');
-    await page.waitForFunction(expected => {
-      const found = document.querySelector('tr[data-toggle="tableWinningNumbers"] strong');
-      return found && found.textContent.match(/\d+/)?.[0] === String(expected);
-    }, last, { timeout: 30000 });
+    await page.waitForFunction(([expectedFirst, expectedLast]) => {
+      const results = document.querySelectorAll('tr[data-toggle="tableWinningNumbers"]');
+      const number = row => Number(row?.querySelector('strong')?.textContent.match(/\d+/)?.[0]);
+      return results.length === expectedLast - expectedFirst + 1 &&
+        number(results[0]) === expectedLast && number(results[results.length - 1]) === expectedFirst;
+    }, [first, last], { timeout: 30000 });
     const draws = await rows.evaluateAll(elements => elements.map(tr => {
       const c = tr.querySelectorAll('td');
       return {
