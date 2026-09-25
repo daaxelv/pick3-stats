@@ -1,0 +1,51 @@
+name: Backfill NJ Quick Draw history
+
+on:
+  workflow_dispatch:
+    inputs:
+      batches:
+        description: '500-draw batches to collect (1–200)'
+        required: true
+        default: '1'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: quickdraw-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Collect next missing ranges
+        id: collector
+        continue-on-error: true
+        run: node quickdraw/scripts/collect_official.mjs --max-batches '${{ inputs.batches }}'
+      - name: Save verified batches
+        run: |
+          git config user.name "quickdraw-results-bot"
+          git config user.email "actions@github.com"
+          git add quickdraw/data/
+          if git diff --cached --quiet; then
+            echo "No new batches."
+          else
+            git commit -m "Backfill NJ Quick Draw results $(date -u +%F)"
+            git push
+          fi
+      - name: Report any collection failure
+        if: steps.collector.outcome == 'failure'
+        run: exit 1
