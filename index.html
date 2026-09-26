@@ -1413,6 +1413,8 @@ var _m4lFOMargFreqs = null; // marginal freq array (either mode)
 var _m4lFOReady    = false; // true after generation completes
 var _m4lFOLookupCb = null;  // pending exact-mode lookup callback
 var _m4lFOCCMap    = null;  // combo-count map for fast mode
+var _m4lFODrawNums = null, _m4lFODrawMB = null;
+var _m4lFOFastTiers = null, _m4lFOFastExamples = null;
 var _m4lFocusRowsCache = [], _m4lFocusTotal = 0, _m4lFocusPage = 0;
 var _m4lFocusTarget = 'm4l-focus';
 var M4L_FOCUS_PAGE_SIZE = 50;
@@ -1703,71 +1705,6 @@ function m4lBuildTickets() {
 // FULL-ODDS CROWD (22,910,580) — Web Worker + Fast-scaled simulation
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function _m4lFOWorkerSrc() {
-  // Returns Web Worker source as a string.  All string literals inside use
-  // double quotes so there are no escaping conflicts with the outer array.
-  return [
-    'var _foCC = {};',
-    'var _foCum = null, _foTotW = 0;',
-    'var _foMF = null, _foTotal = 0, _foDone = 0;',
-    'var _foFocus = null;',
-    'function _foPick(used) {',
-    '  for (var att = 0; att < 50; att++) {',
-    '    var r = Math.random() * _foTotW;',
-    '    var lo = 0, hi = _foCum.length - 1;',
-    '    while (lo < hi) { var mid = (lo+hi)>>1; if (_foCum[mid] < r) lo=mid+1; else hi=mid; }',
-    '    var n = lo + 1;',
-    '    if (!used[n]) return n;',
-    '  }',
-    '  for (var k = 1; k <= 58; k++) if (!used[k]) return k;',
-    '  return 1;',
-    '}',
-    'function _foGen() {',
-    '  var used = {}, nums = [];',
-    '  var qp = Math.random() < 0.15;',
-    '  for (var i = 0; i < 5; i++) {',
-    '    var n;',
-    '    if (qp) { do { n = 1+Math.floor(Math.random()*58); } while (used[n]); }',
-    '    else { n = _foPick(used); }',
-    '    used[n] = 1; nums.push(n);',
-    '  }',
-    '  nums.sort(function(a,b){return a-b;});',
-    '  return { n0:nums[0], n1:nums[1], n2:nums[2], n3:nums[3], n4:nums[4], mb:1+Math.floor(Math.random()*5) };',
-    '}',
-    'function _foChunk() {',
-    '  var end = Math.min(_foDone + 250000, _foTotal);',
-    '  for (var i = _foDone; i < end; i++) {',
-    '    var t = _foGen();',
-    '    _foMF[t.n0]++; _foMF[t.n1]++; _foMF[t.n2]++; _foMF[t.n3]++; _foMF[t.n4]++;',
-    '    var key = t.n0+","+t.n1+","+t.n2+","+t.n3+","+t.n4+","+t.mb;',
-    '    _foCC[key] = (_foCC[key] || 0) + 1;',
-    '  }',
-    '  _foDone = end;',
-    '  self.postMessage({ type:"progress", done:_foDone, total:_foTotal });',
-    '  if (_foDone < _foTotal) setTimeout(_foChunk, 0);',
-    '  else self.postMessage({ type:"done", margFreqs:Array.from(_foMF) });',
-    '}',
-    'self.onmessage = function(e) {',
-    '  var d = e.data;',
-    '  if (d.type === "start") {',
-    '    _foCum = d.cum; _foTotW = d.totW;',
-    '    _foTotal = d.total; _foDone = 0;',
-    '    _foCC = {}; _foMF = new Uint32Array(59); _foFocus = null;',
-    '    _foChunk();',
-    '  } else if (d.type === "lookup") {',
-    '    self.postMessage({ type:"lookupResult", key:d.key, count:_foCC[d.key]||0 });',
-    '  } else if (d.type === "focusPage") {',
-    '    if (!_foFocus) {',
-    '      _foFocus = Object.keys(_foCC).filter(function(k){var parts=k.split(","); return parts[5]==="4" && parts.slice(0,5).indexOf("4")!==-1;})',
-    '        .map(function(k){return {key:k,count:_foCC[k]};});',
-    '      _foFocus.sort(function(a,b){return b.count-a.count || a.key.localeCompare(b.key);});',
-    '    }',
-    '    self.postMessage({type:"focusResult",page:d.page,total:_foFocus.length,rows:_foFocus.slice(d.page*d.size,(d.page+1)*d.size)});',
-    '  }',
-    '};'
-  ].join('\n');
-}
-
 function _m4lFOBallsHtml(nums, mb) {
   var h = '';
   for (var i = 0; i < nums.length; i++) {
@@ -1816,86 +1753,63 @@ function _m4lFOProfileHtml(nums) {
     '</div>';
 }
 
-function _m4lFOShowResult(dNums, dMb, coWin, isExact, t1Count) {
+function _m4lFOShowResult(dNums, dMb, counts, examples, isExact, secondMB) {
   var el = document.getElementById('m4l-fo-draw-result');
   if (!el) return;
   var ballsH = _m4lFOBallsHtml(dNums, dMb);
-  var profH  = _m4lFOProfileHtml(dNums);
-  var estH   = '<div class="small" style="margin-top:4px;color:var(--muted);">' +
-    'Estimated real-world co-holders for this combination profile: <strong>' +
-    _m4lFOEstHolder(_m4lFOProfile(dNums)) + '</strong> (human-bias model, illustrative).</div>';
-  var innerH;
-  if (coWin > 0) {
-    var estLabel = isExact ? '' : ' <span class="small" style="color:var(--muted);">(scaled estimate)</span>';
-    innerH =
-      '<div class="notice good" style="margin-top:10px;"><strong>🏆 Winning Ticket Report</strong></div>' +
-      '<div style="margin:10px 0 6px;">' + ballsH + '</div>' +
-      '<div class="small" style="margin-top:6px;">' +
-        '<strong>Jackpot co-winners in simulated crowd of ' + fmt(M4L_FO_TOTAL) + ':</strong> ' +
-        '<strong style="color:var(--green);font-size:18px;">' + fmt(coWin) + '</strong>' + estLabel +
-      '</div>' + profH + estH +
-      '<div class="small" style="margin-top:6px;color:var(--muted);">' +
-        'Life-prize winners are each paid independently — the prize is NOT split between co-winners.' +
-      '</div>';
-  } else {
-    var t1Str = t1Count > 0
-      ? fmt(t1Count) + ' simulated player' + (t1Count === 1 ? '' : 's') +
-        ' matched all 5 numbers but not the MB — second-tier prize ($100K/yr for life).'
-      : 'No simulated players matched all 5 numbers either — an exceptionally rare draw result.';
-    innerH =
-      '<div class="notice warn" style="margin-top:10px;"><strong>🎱 No jackpot winner this drawing</strong></div>' +
-      '<div style="margin:10px 0 6px;">' + ballsH + '</div>' +
-      '<div class="small" style="margin-top:6px;color:var(--muted);">No simulated player held the exact combination drawn — the jackpot goes unclaimed.</div>' +
-      '<div class="small" style="margin-top:4px;"><strong>Near-misses (5 numbers, wrong MB):</strong> ' + t1Str + '</div>' +
-      profH + estH;
-  }
-  el.innerHTML = innerH;
+  var rows = M4L_TIER_NAMES.map(function(tier, i) {
+    var ticket = examples[i];
+    var example = ticket ? ticket.nums.map(function(n){return ('0'+n).slice(-2);}).join('-') + ' MB:' + ('0'+ticket.mb).slice(-2) : '—';
+    return '<tr><td>' + tier + '</td><td>' + fmt(counts[i]) + '</td><td>' + M4L_TIER_PRIZES[i] +
+      '</td><td class="mono">' + example + '</td></tr>';
+  }).join('');
+  var mbDetail = secondMB ? '<div class="small">Second-prize tickets (same five main numbers, different Millionaire Ball): ' +
+    [1,2,3,4,5].filter(function(mb){return mb !== dMb;}).map(function(mb){return 'MB:' + ('0'+mb).slice(-2) + ' = ' + fmt(secondMB[mb]);}).join(' · ') + '</div>' : '';
+  el.innerHTML = '<div class="notice ' + (counts[0] ? 'good' : 'warn') + '" style="margin-top:10px;"><strong>' +
+    (counts[0] ? '🏆 Jackpot winners: ' + fmt(counts[0]) : '🎱 No jackpot winner in this simulated draw') + '</strong></div>' +
+    '<div style="margin:10px 0 6px;">Drawn numbers: ' + ballsH + '</div>' +
+    '<div class="small" style="margin:8px 0;">' + (isExact ? 'Exact counts from 22,910,580 generated tickets.' :
+      'Scaled estimates from 200,000 sampled tickets; rare prize tiers may be missed by the sample.') +
+      ' Example ticket is one matching simulated ticket where available. Life prizes are paid independently.</div>' +
+    mbDetail + '<div style="overflow-x:auto;"><table><thead><tr><th>Prize tier</th><th>Winning tickets</th><th>Prize</th><th>Example winning ticket</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    _m4lFOProfileHtml(dNums);
 }
 
-function m4lFODraw() {
-  if (!_m4lFOReady) { showToast('Run the Full-Odds simulation first.', '#ff6b6b'); return; }
+function _m4lFONewDraw() {
   var dNums = [], used = {};
   while (dNums.length < 5) {
     var nn = 1 + Math.floor(Math.random() * 58);
     if (!used[nn]) { used[nn] = 1; dNums.push(nn); }
   }
   dNums.sort(function(a, b) { return a - b; });
-  var dMb = 1 + Math.floor(Math.random() * 5);
+  return {nums:dNums, mb:1 + Math.floor(Math.random() * 5)};
+}
 
-  if (_m4lFOMode === 'exact' && _m4lFOWorker) {
-    var jackpotCount = 0, t1Count = 0, received = 0;
-    var jackpotKey = dNums[0] + ',' + dNums[1] + ',' + dNums[2] + ',' + dNums[3] + ',' + dNums[4] + ',' + dMb;
-    _m4lFOLookupCb = function(d) {
-      if (d.key === jackpotKey) jackpotCount = d.count;
-      else t1Count += d.count;
-      received++;
-      if (received === 5) {
-        _m4lFOLookupCb = null;
-        _m4lFOShowResult(dNums, dMb, jackpotCount, true, t1Count);
-      }
-    };
-    for (var mb = 1; mb <= 5; mb++) {
-      _m4lFOWorker.postMessage({
-        type: 'lookup',
-        key: dNums[0] + ',' + dNums[1] + ',' + dNums[2] + ',' + dNums[3] + ',' + dNums[4] + ',' + mb
-      });
+function _m4lFOScoreTicket(nums, mb, drawNums, drawMB) {
+  var matched = nums.filter(function(n){return drawNums.includes(n);}).length;
+  if (matched === 5) return mb === drawMB ? 0 : 1;
+  if (matched === 4) return mb === drawMB ? 2 : 3;
+  if (matched === 3) return mb === drawMB ? 4 : 5;
+  if (matched === 2) return mb === drawMB ? 6 : 7;
+  return matched === 1 && mb === drawMB ? 8 : -1;
+}
+
+function m4lFODraw() {
+  if (!_m4lFOReady) { showToast('Run the Full-Odds simulation first.', '#ff6b6b'); return; }
+  if (_m4lFOMode === 'exact') { m4lFOStart(); return; }
+  var draw = _m4lFONewDraw();
+  var counts = Array(9).fill(0), examples = Array(9).fill(null), secondMB = Array(6).fill(0);
+  _m4lFOSample.forEach(function(t) {
+    var tier = _m4lFOScoreTicket(t.nums, t.mb, draw.nums, draw.mb);
+    if (tier >= 0) {
+      counts[tier]++;
+      if (!examples[tier]) examples[tier] = t;
+      if (tier === 1) secondMB[t.mb]++;
     }
-  } else {
-    // Fast mode: pre-built combo-count map
-    var jpKey = dNums[0] + ',' + dNums[1] + ',' + dNums[2] + ',' + dNums[3] + ',' + dNums[4] + ',' + dMb;
-    var sJP = (_m4lFOCCMap && _m4lFOCCMap[jpKey]) ? _m4lFOCCMap[jpKey] : 0;
-    var sT1 = 0;
-    if (_m4lFOCCMap) {
-      for (var mb2 = 1; mb2 <= 5; mb2++) {
-        if (mb2 !== dMb) {
-          var k2 = dNums[0] + ',' + dNums[1] + ',' + dNums[2] + ',' + dNums[3] + ',' + dNums[4] + ',' + mb2;
-          sT1 += (_m4lFOCCMap[k2] || 0);
-        }
-      }
-    }
-    var sc = M4L_FO_TOTAL / M4L_FO_FAST_N;
-    _m4lFOShowResult(dNums, dMb, Math.round(sJP * sc), false, Math.round(sT1 * sc));
-  }
+  });
+  var scale = M4L_FO_TOTAL / M4L_FO_FAST_N;
+  _m4lFOShowResult(draw.nums, draw.mb, counts.map(function(n){return Math.round(n*scale);}), examples, false,
+    secondMB.map(function(n){return Math.round(n*scale);}));
 }
 
 function m4lFOCancel() {
@@ -1913,6 +1827,8 @@ function m4lFOCancel() {
   if (res) res.innerHTML = '';
   var bRes = document.getElementById('m4l-fo-batch-result');
   if (bRes) bRes.innerHTML = '';
+  var startBtn = document.getElementById('m4l-fo-start-btn');
+  if (startBtn) { startBtn.disabled = false; startBtn.textContent = '▶ Start simulation'; }
 }
 
 function _m4lFOOnDone(margFreqs) {
@@ -1937,6 +1853,8 @@ function _m4lFOOnDone(margFreqs) {
   }
   var drawA = document.getElementById('m4l-fo-draw-area');
   if (drawA) drawA.style.display = 'block';
+  var drawBtn = document.getElementById('m4l-fo-draw-btn');
+  if (drawBtn) drawBtn.textContent = _m4lFOMode === 'exact' ? '🎱 New draw + re-run exact crowd' : '🎱 Draw numbers again';
   var batchA = document.getElementById('m4l-fo-batch-area');
   if (batchA) batchA.style.display = 'block';
   var startBtn = document.getElementById('m4l-fo-start-btn');
@@ -1970,6 +1888,7 @@ function _m4lFOStartFast() {
   _m4lFOCCMap  = cc;
   _m4lFOMode   = 'fast';
   _m4lFOOnDone(mf);
+  m4lFODraw();
 }
 
 // Last-received progress values for the rAF paint loop.
@@ -1988,14 +1907,25 @@ function _m4lFOPaintProgress() {
   if (progTxt) progTxt.textContent = 'Generated ' + fmt(_m4lFOProgDone) + ' of ' + fmt(M4L_FO_TOTAL) + ' (' + pct + '%)…';
 }
 
+function _m4lFOFail(message) {
+  if (_m4lFOWorker) { _m4lFOWorker.terminate(); _m4lFOWorker = null; }
+  _m4lFOReady = false;
+  var prog = document.getElementById('m4l-fo-prog');
+  var txt = document.getElementById('m4l-fo-prog-txt');
+  if (prog) prog.style.display = 'block';
+  if (txt) txt.textContent = 'Simulation stopped: ' + message + ' Choose Fast mode or retry Exact.';
+  var start = document.getElementById('m4l-fo-start-btn');
+  if (start) { start.disabled = false; start.textContent = '▶ Retry simulation'; }
+  var cancel = document.getElementById('m4l-fo-cancel-btn');
+  if (cancel) cancel.style.display = 'none';
+}
+
 function _m4lFOStartExact() {
   _m4lInit();
-  var src  = _m4lFOWorkerSrc();
-  var blob = new Blob([src], { type: 'application/javascript' });
-  var url  = URL.createObjectURL(blob);
   if (_m4lFOWorker) _m4lFOWorker.terminate();
-  _m4lFOWorker = new Worker(url);
-  URL.revokeObjectURL(url);
+  var draw = _m4lFONewDraw();
+  _m4lFODrawNums = draw.nums; _m4lFODrawMB = draw.mb;
+  _m4lFOWorker = new Worker('m4l-full-odds-worker.js');
   _m4lFOProgDone  = 0;
   _m4lFOProgTotal = M4L_FO_TOTAL;
   _m4lFOProgRaf   = false;
@@ -2015,18 +1945,18 @@ function _m4lFOStartExact() {
     } else if (d.type === 'done') {
       _m4lFOMode = 'exact';
       _m4lFOOnDone(d.margFreqs);
-    } else if (d.type === 'lookupResult' && _m4lFOLookupCb) {
-      _m4lFOLookupCb(d);
+      _m4lFOShowResult(d.draw, d.drawMB, d.tiers, d.examples, true, d.secondMB);
     } else if (d.type === 'focusResult') {
       _m4lFocusTotal = d.total; _m4lFocusPage = d.page;
       _m4lFocusRender(d.rows,d.total,d.page,'22,910,580 generated tickets','m4l-fo-focus');
     }
   };
   _m4lFOWorker.onerror = function(err) {
-    showToast('Worker error: ' + (err.message || 'unknown'), '#ff6b6b');
-    m4lFOCancel();
+    _m4lFOFail(err.message || 'browser worker error');
   };
-  _m4lFOWorker.postMessage({ type: 'start', total: M4L_FO_TOTAL, cum: _m4lCum, totW: _m4lTotW });
+  _m4lFOWorker.onmessageerror = function() { _m4lFOFail('unable to read worker result'); };
+  _m4lFOWorker.postMessage({ type: 'start', total: M4L_FO_TOTAL, cum: _m4lCum, totW: _m4lTotW,
+    draw: draw.nums, drawMB: draw.mb });
 }
 
 function m4lFOStart() {
@@ -2047,12 +1977,16 @@ function m4lFOStart() {
   if (bRes) bRes.innerHTML = '';
   var focus = document.getElementById('m4l-fo-focus');
   if (focus) { focus.innerHTML = ''; focus.style.display = 'none'; }
+  if (_m4lFOWorker) { _m4lFOWorker.terminate(); _m4lFOWorker = null; }
   if (mode === 'fast') {
     var progArea = document.getElementById('m4l-fo-prog');
     if (progArea) progArea.style.display = 'none';
     var cancelBtn = document.getElementById('m4l-fo-cancel-btn');
     if (cancelBtn) cancelBtn.style.display = 'none';
-    setTimeout(function() { _m4lFOStartFast(); }, 10);
+    setTimeout(function() {
+      try { _m4lFOStartFast(); }
+      catch (err) { _m4lFOFail(err.message || 'fast simulation error'); }
+    }, 10);
   } else {
     var progArea2 = document.getElementById('m4l-fo-prog');
     if (progArea2) {
@@ -2064,7 +1998,8 @@ function m4lFOStart() {
     }
     var cancelBtn2 = document.getElementById('m4l-fo-cancel-btn');
     if (cancelBtn2) cancelBtn2.style.display = '';
-    _m4lFOStartExact();
+    try { _m4lFOStartExact(); }
+    catch (err) { _m4lFOFail(err.message || 'could not start worker'); }
   }
 }
 
@@ -2250,8 +2185,8 @@ function m4lSimCardHTML() {
 
         '<div id="m4l-fo-draw-area" style="display:none;margin-top:18px;padding-top:14px;border-top:1px solid var(--line);">' +
           '<div class="sectionTitle" style="font-size:14px;">Mock Drawing — Full-Odds Crowd</div>' +
-          '<div class="small" style="margin-bottom:10px;color:var(--muted);">Picks a random 5 + MB combination and shows how many of the 22.9M simulated tickets hold it. Run multiple times for different outcomes.</div>' +
-          '<button class="secondary" onclick="m4lFODraw()" style="min-height:44px;">🎱 Draw numbers</button>' +
+          '<div class="small" style="margin-bottom:10px;color:var(--muted);">The run picks one random drawing and reports winners for all nine prize tiers. Exact mode counts every generated ticket for that drawing; a new exact drawing reruns the crowd.</div>' +
+          '<button id="m4l-fo-draw-btn" class="secondary" onclick="m4lFODraw()" style="min-height:44px;">🎱 Draw numbers again</button>' +
           '<div id="m4l-fo-draw-result" style="margin-top:12px;"></div>' +
         '</div>' +
 
