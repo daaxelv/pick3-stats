@@ -1,13 +1,13 @@
 {
   "first_draw": 1,
-  "last_draw": 988078,
-  "loaded_draws": 652854,
-  "missing_draws_between_loaded_endpoints": 335224,
+  "last_draw": 988136,
+  "loaded_draws": 702412,
+  "missing_draws_between_loaded_endpoints": 285724,
   "gaps": [
     {
-      "from": 650501,
+      "from": 700001,
       "to": 985724,
-      "count": 335224
+      "count": 285724
     }
   ]
 }
