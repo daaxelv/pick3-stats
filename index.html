@@ -1421,6 +1421,104 @@ var _m4lFOCCMap    = null;  // combo-count map for fast mode
 var _m4lFODrawNums = null, _m4lFODrawMB = null;
 var _m4lFORunId = null;
 var M4L_FO_JOURNAL_KEY = 'm4l-full-odds-runs-v1';
+var M4L_FO_HITS_KEY = 'm4l-future-jackpots-v1';
+var _m4lFOCalendarMonth = null, _m4lFOFutureBusy = false;
+function _m4lFOHits() {
+  try { var hits = JSON.parse(localStorage.getItem(M4L_FO_HITS_KEY) || '[]'); return Array.isArray(hits) ? hits : []; }
+  catch(e) { return []; }
+}
+function _m4lFOTodayET() {
+  return new Intl.DateTimeFormat('en-CA', {timeZone:'America/New_York', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date());
+}
+function _m4lFONextDate(date) {
+  var d = new Date(date + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0,10);
+}
+function _m4lFOStartingDate() {
+  var input = document.getElementById('m4l-fo-future-date');
+  var latestReal = M4L_INFO.dateEnd || '2026-02-22';
+  var minimum = _m4lFONextDate(latestReal);
+  var today = _m4lFOTodayET();
+  if (today > minimum) minimum = today;
+  if (input) {
+    input.min = minimum;
+    if (!input.value || input.value < minimum) input.value = minimum;
+    return input.value;
+  }
+  return minimum;
+}
+function _m4lFOSaveHit(hit) {
+  try {
+    var hits = _m4lFOHits();
+    hits.unshift(Object.assign({id:Date.now()+'-'+Math.random().toString(36).slice(2,8), saved:new Date().toISOString()},hit));
+    localStorage.setItem(M4L_FO_HITS_KEY, JSON.stringify(hits));
+  } catch(e) { var w=document.getElementById('m4l-fo-future-result'); if(w) w.textContent='Storage unavailable: export this result before closing.'; }
+  _m4lFOCalendarMonth = hit.date.slice(0,7);
+  _m4lFORenderCalendar();
+}
+function m4lFOExportHits() {
+  var payload = {source:'Simulated future jackpot hits, never actual lottery results', exported:new Date().toISOString(), hits:_m4lFOHits()};
+  var a=document.createElement('a'), url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));
+  a.href=url; a.download='m4l-simulated-jackpot-hits.json'; a.click(); setTimeout(function(){URL.revokeObjectURL(url);},1000);
+}
+function m4lFOCalendarMove(n) {
+  var d=new Date((_m4lFOCalendarMonth || _m4lFOTodayET().slice(0,7))+'-01T12:00:00Z');
+  d.setUTCMonth(d.getUTCMonth()+n); _m4lFOCalendarMonth=d.toISOString().slice(0,7); _m4lFORenderCalendar();
+}
+function _m4lFORenderCalendar() {
+  var el=document.getElementById('m4l-fo-calendar'); if(!el) return;
+  var hits=_m4lFOHits(), historical=M4L_INFO.rows || [];
+  var month=_m4lFOCalendarMonth || (historical[0] ? historical[0].date.slice(0,7) : _m4lFOTodayET().slice(0,7));
+  _m4lFOCalendarMonth=month;
+  var first=new Date(month+'-01T12:00:00Z'), days=new Date(Date.UTC(first.getUTCFullYear(),first.getUTCMonth()+1,0)).getUTCDate();
+  var realByDate={}; historical.forEach(function(r){realByDate[r.date]=r;});
+  var hitsByDate={}; hits.forEach(function(h){(hitsByDate[h.date] ||= []).push(h);});
+  var grid=''; for(var pad=0;pad<first.getUTCDay();pad++)grid+='<td></td>';
+  for(var day=1;day<=days;day++) {
+    var date=month+'-'+('0'+day).slice(-2), real=realByDate[date], sims=hitsByDate[date]||[];
+    if((pad+day-1)%7===0 && day>1) grid+='</tr><tr>';
+    grid+='<td style="vertical-align:top;min-width:95px;border:1px solid var(--line);padding:5px;"><strong>'+day+'</strong>'+
+      (real?'<div class="small" title="Published result">📅 Actual<br>'+_m4lFOEsc(real.numbers.map(function(n){return ('0'+n).slice(-2);}).join(' '))+' MB '+_m4lFOEsc(real.mb)+'</div>':'')+
+      sims.map(function(h){return '<div class="small" style="color:var(--green);" title="Fictional mock drawing">🎱 Mock '+_m4lFOEsc(h.draw.map(function(n){return ('0'+n).slice(-2);}).join(' '))+' MB '+h.drawMB+' ('+h.winners+')</div>';}).join('')+'</td>';
+  }
+  el.innerHTML='<div style="display:flex;gap:10px;align-items:center;"><button class="secondary" onclick="m4lFOCalendarMove(-1)">‹</button><strong>'+_m4lFOEsc(month)+'</strong><button class="secondary" onclick="m4lFOCalendarMove(1)">›</button></div>'+
+    '<div style="overflow-x:auto;"><table style="width:100%;"><thead><tr><th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th></tr></thead><tbody><tr>'+grid+'</tr></tbody></table></div>'+
+    '<div class="small">📅 Published drawn combinations ('+historical.length+' on file); 🎱 fictional mock jackpot hits. The published results file does not include actual prize winner counts.</div>'+
+    '<div class="sectionTitle" style="font-size:13px;margin-top:12px;">Saved mock jackpot hits ('+hits.length+')</div>'+
+    (hits.length?'<button class="secondary" onclick="m4lFOExportHits()">Download jackpot list (JSON)</button><div style="overflow-x:auto;"><table><thead><tr><th>Mock date (11:15 p.m. ET)</th><th>Jackpot ticket / mock draw</th><th>Simulated jackpot winners</th><th>Tickets generated</th><th>Draws searched</th></tr></thead><tbody>'+hits.map(function(h){return '<tr><td>'+_m4lFOEsc(h.date)+'</td><td class="mono">'+_m4lFOEsc(h.draw.map(function(n){return ('0'+n).slice(-2);}).join('-'))+' MB:'+('0'+h.drawMB).slice(-2)+'</td><td>'+h.winners+'</td><td>'+fmt(h.tickets)+'</td><td>'+h.nights+'</td></tr>';}).join('')+'</tbody></table></div>':'<div class="small">No simulated jackpot hits saved yet.</div>');
+}
+function m4lFOAutoJackpot() {
+  if (!_m4lFOReady || _m4lFOFutureBusy) return;
+  var start=_m4lFOStartingDate(), el=document.getElementById('m4l-fo-future-result');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || start < (document.getElementById('m4l-fo-future-date').min)) { el.textContent='Choose a date on or after the next unscheduled future drawing.'; return; }
+  _m4lFOFutureBusy=true;
+  var btn=document.getElementById('m4l-fo-future-btn'); if(btn)btn.disabled=true;
+  if(el)el.textContent='Searching future mock drawings from '+start+'…';
+  if (_m4lFOMode === 'exact') {
+    _m4lFOWorker.postMessage({type:'futureDraws',start:start,limit:10000});
+  } else {
+    setTimeout(function(){
+      try {
+        var date=start, found=null;
+        for(var i=0;i<10000;i++) {
+          var draw=_m4lFONewDraw(), key=draw.nums.join(',')+','+draw.mb, count=_m4lFOCCMap[key]||0;
+          if(count) { found={date:date,draw:draw.nums,drawMB:draw.mb,winners:count,nights:i+1,tickets:M4L_FO_FAST_N,mode:'fast'}; break; }
+          date=_m4lFONextDate(date);
+        }
+        _m4lFOAutoFinish(found,10000);
+      } catch(err) { _m4lFOAutoFinish(null,0,String(err)); }
+    },30);
+  }
+}
+function _m4lFOAutoFinish(hit, searched, error) {
+  _m4lFOFutureBusy=false;
+  var btn=document.getElementById('m4l-fo-future-btn'); if(btn)btn.disabled=false;
+  var el=document.getElementById('m4l-fo-future-result');
+  if(hit) {
+    _m4lFOSaveHit(hit);
+    if(el)el.textContent='Saved mock jackpot on '+hit.date+': '+hit.draw.map(function(n){return ('0'+n).slice(-2);}).join('-')+' MB:'+('0'+hit.drawMB).slice(-2)+' — '+hit.winners+' matching ticket(s) among '+fmt(hit.tickets)+' generated. Searched '+hit.nights+' nightly draws.';
+    var input=document.getElementById('m4l-fo-future-date'); if(input)input.value=_m4lFONextDate(hit.date);
+  } else if(el) el.textContent=error || ('No jackpot match in '+searched+' mock nights. Choose a later starting date and run again.');
+}
 function _m4lFOJournal() {
   try { var runs = JSON.parse(localStorage.getItem(M4L_FO_JOURNAL_KEY) || '[]'); return Array.isArray(runs) ? runs : []; }
   catch (e) { return []; }
@@ -2030,6 +2128,10 @@ function _m4lFOStartExact() {
       _m4lFOSaveRun({status:'complete', completed:M4L_FO_TOTAL, tiers:d.tiers, topWinners:d.topWinners, finished:new Date().toISOString()});
       _m4lFOShowResult(d.draw, d.drawMB, d.tiers, d.examples, true, d.secondMB);
       m4lFOShowSavedRun(_m4lFORunId);
+    } else if (d.type === 'futureHit') {
+      _m4lFOAutoFinish({date:d.date,draw:d.draw,drawMB:d.drawMB,winners:d.winners,nights:d.nights,tickets:M4L_FO_TOTAL,mode:'exact'},d.nights);
+    } else if (d.type === 'futureMiss') {
+      _m4lFOAutoFinish(null,d.nights);
     } else if (d.type === 'focusResult') {
       _m4lFocusTotal = d.total; _m4lFocusPage = d.page;
       _m4lFocusRender(d.rows,d.total,d.page,'22,910,580 generated tickets','m4l-fo-focus');
@@ -2097,6 +2199,7 @@ function m4lFullOddsOpen() {
   var exRad   = document.getElementById('m4l-fo-mode-exact');
   if (fastRad && exRad) { fastRad.checked = isMobile; exRad.checked = !isMobile; }
   _m4lFORenderJournal();
+  _m4lFOStartingDate(); _m4lFORenderCalendar();
 }
 
 function m4lFOBatch100() {
@@ -2273,6 +2376,9 @@ function m4lSimCardHTML() {
           '<div class="small" style="margin-bottom:10px;color:var(--muted);">The run picks one random drawing and reports winners for all nine prize tiers. Exact mode counts every generated ticket for that drawing; a new exact drawing reruns the crowd.</div>' +
           '<button id="m4l-fo-draw-btn" class="secondary" onclick="m4lFODraw()" style="min-height:44px;">🎱 Draw numbers again</button>' +
           '<div id="m4l-fo-draw-result" style="margin-top:12px;"></div>' +
+          '<div style="margin-top:12px;"><label>First future mock date <input type="date" id="m4l-fo-future-date"></label> <button id="m4l-fo-future-btn" class="primary" onclick="m4lFOAutoJackpot()">🎱 Run nightly until jackpot</button></div>' +
+          '<div class="small">Simulates one draw per day at 11:15 p.m. ET, beginning on the selected date; stops at the first matching crowd ticket (maximum 10,000 nights). Exact mode reuses all 22,910,580 generated tickets; Fast mode searches its 200,000 generated tickets without scaling jackpot counts.</div>' +
+          '<div id="m4l-fo-future-result" class="small" aria-live="polite"></div>' +
         '</div>' +
 
         '<div id="m4l-fo-batch-area" style="display:none;margin-top:18px;padding-top:14px;border-top:1px solid var(--line);">' +
@@ -2283,6 +2389,8 @@ function m4lSimCardHTML() {
         '</div>' +
 
       '</div>' +
+      '<div class="sectionTitle" style="font-size:14px;margin-top:16px;">M4L results calendar — daily 11:15 p.m. Eastern</div>' +
+      '<div id="m4l-fo-calendar" style="margin-top:12px;"></div>' +
       '<div id="m4l-fo-journal" style="margin-top:16px;"></div>' +
       '<div id="m4l-fo-saved-detail" style="margin-top:12px;"></div>' +
 

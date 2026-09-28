@@ -3,6 +3,8 @@
 let cumulative, totalWeight, total, completed, draw, drawMB;
 let frequency, tiers, examples, secondMB, focusCounts, topWinners;
 let focusRows;
+let comboCounts;
+const COMBO_SIZE = 22910580;
 const FOCUS_SIZE = 395010; // 57 choose 4: five main balls include 04
 const choose = Array.from({length: 58}, () => Array(6).fill(0));
 for (let n = 0; n < choose.length; n++) {
@@ -50,8 +52,15 @@ function focusIndex(nums) {
   }
   return rank;
 }
+function comboIndex(nums, mb) {
+  let rank = 0;
+  for (let i = 0; i < 5; i++) rank += choose[nums[i] - 1][i + 1];
+  return rank * 5 + mb - 1;
+}
 
 function score(ticket) {
+  const index = comboIndex(ticket.nums, ticket.mb);
+  if (comboCounts[index] < 65535) comboCounts[index]++;
   for (const n of ticket.nums) frequency[n]++;
   if (ticket.mb === 4 && ticket.nums.includes(4)) focusCounts[focusIndex(ticket.nums)]++;
   let matched = 0;
@@ -103,6 +112,27 @@ function focusPage(page, size) {
     rows: focusRows.slice(page * size, (page + 1) * size)});
 }
 
+function futureDraws(start, limit) {
+  let date = start;
+  for (let i = 0; i < limit; i++) {
+    const ticket = generateUniformDraw();
+    const winners = comboCounts[comboIndex(ticket.nums, ticket.mb)];
+    if (winners) {
+      self.postMessage({type:'futureHit', date, nights:i + 1, draw:ticket.nums, drawMB:ticket.mb, winners});
+      return;
+    }
+    const next = new Date(date + 'T12:00:00Z');
+    next.setUTCDate(next.getUTCDate() + 1);
+    date = next.toISOString().slice(0,10);
+  }
+  self.postMessage({type:'futureMiss', date, nights:limit});
+}
+function generateUniformDraw() {
+  const used = new Set();
+  while (used.size < 5) used.add(1 + Math.floor(Math.random() * 58));
+  return {nums:Array.from(used).sort((a,b)=>a-b), mb:1 + Math.floor(Math.random()*5)};
+}
+
 self.onmessage = ({data}) => {
   if (data.type === 'start') {
     cumulative = data.cum;
@@ -117,9 +147,12 @@ self.onmessage = ({data}) => {
     secondMB = Array(6).fill(0);
     topWinners = [{}, {}, {}];
     focusCounts = new Uint32Array(FOCUS_SIZE);
+    comboCounts = new Uint16Array(COMBO_SIZE);
     focusRows = null;
     setTimeout(chunk, 0);
   } else if (data.type === 'focusPage' && completed === total) {
     focusPage(data.page, data.size);
+  } else if (data.type === 'futureDraws' && completed === total) {
+    futureDraws(data.start, Math.min(10000, data.limit));
   }
 };
