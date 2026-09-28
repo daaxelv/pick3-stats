@@ -40,6 +40,8 @@ table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{padding:10px 12px;border-bottom:1px solid #1a3245;vertical-align:top}
 th{background:#0f2030;color:var(--muted);text-transform:uppercase;font-size:11px;letter-spacing:1px;position:sticky;top:0}
 tr:hover td{background:#0d1c2b}
+th .sortButton{border:0;background:transparent;padding:2px;color:inherit;font:inherit;text-transform:inherit;letter-spacing:inherit;white-space:nowrap}
+th .sortButton:hover,th .sortButton:focus-visible{color:var(--cyan);text-decoration:underline}
 .badges{display:flex;gap:6px;flex-wrap:wrap}.badge{padding:2px 8px;border-radius:999px;font-size:11px;border:1px solid}
 .b-green{color:var(--green);border-color:#2f7f54;background:#0d2016}
 .b-gold{color:var(--gold);border-color:#8a6a20;background:#221a08}
@@ -434,6 +436,15 @@ function renderEngineTab(){
   renderEngineResults();
 }
 
+let engineSort = {key:'rank',dir:1};
+function sortEngineResults(key){
+  if(engineSort.key===key) engineSort.dir *= -1;
+  else engineSort = {key,dir:key==='rank'||key==='nums'||key==='repeatedHistory' ? 1 : -1};
+  renderEngineResults();
+}
+function engineSortHeader(label,key){
+  return `<th aria-sort="${engineSort.key===key ? (engineSort.dir===1?'ascending':'descending') : 'none'}"><button type="button" class="sortButton" onclick="sortEngineResults('${key}')" aria-label="Sort by ${label}">${label}${engineSort.key===key ? (engineSort.dir===1?' ▲':' ▼') : ' ↕'}</button></th>`;
+}
 function renderEngineResults(){
   const wrap = document.getElementById('engineResults');
   if(!wrap) return;
@@ -450,9 +461,16 @@ function renderEngineResults(){
       <td>${r.match.exact}${r.match.latestExact ? `<div class="small">Latest: ${r.match.latestExact.date} · #${r.match.latestExact.draw_no}</div>` : ''}</td>
       <td>${r.match.near}${r.match.latestNear ? `<div class="small">Latest: ${r.match.latestNear.date} · #${r.match.latestNear.draw_no}<br>Matched: ${displaySet(r.match.latestNear.matched)}</div>` : ''}</td></tr>
   `).join('');
-  const rows = res.top.map((r,i)=>`
+  const sortedRows = res.top.map((r,i)=>({rank:i+1,...r})).sort((a,b)=>{
+    const key=engineSort.key;
+    const av=key==='nums' ? displaySet(a.nums) : key==='repeatedHistory' ? Number(a.repeatedHistory) : a[key];
+    const bv=key==='nums' ? displaySet(b.nums) : key==='repeatedHistory' ? Number(b.repeatedHistory) : b[key];
+    const result=typeof av==='string' ? av.localeCompare(bv) : av-bv;
+    return result*engineSort.dir || a.rank-b.rank;
+  });
+  const rows = sortedRows.map((r)=>`
     <tr>
-      <td>${i+1}</td>
+      <td>${r.rank}</td>
       <td class="mono">${displaySet(r.nums)}</td>
       <td>${r.score.toFixed(2)}</td>
       <td>${r.avgOverdue}</td>
@@ -510,7 +528,7 @@ function renderEngineResults(){
         <table>
           <thead>
             <tr>
-              <th>#</th><th>Set</th><th>Ghost score</th><th>Avg overdue</th><th>Avg freq</th><th>Recent</th><th>Pair</th><th>Sum</th><th>Flags</th>
+              ${engineSortHeader('#','rank')}${engineSortHeader('Set','nums')}${engineSortHeader('Ghost score','score')}${engineSortHeader('Avg overdue','avgOverdue')}${engineSortHeader('Avg freq','avgFreq')}${engineSortHeader('Recent','avgRecent')}${engineSortHeader('Pair','pairScore')}${engineSortHeader('Sum','sumVal')}${engineSortHeader('Flags','repeatedHistory')}
             </tr>
           </thead>
           <tbody>${rows}</tbody>
