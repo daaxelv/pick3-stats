@@ -3,7 +3,7 @@
 // and can be added to the home screen, while always fetching the live
 // results CSV from the network first (falling back to cache only if the
 // network is unavailable) so stats never go stale on purpose.
-const CACHE_VERSION = 'ghost-engine-v8-saved-runs-sort';
+const CACHE_VERSION = 'ghost-engine-v9-m4l-research';
 const APP_SHELL = [
   './',
   './index.html',
@@ -13,6 +13,12 @@ const APP_SHELL = [
   './feed-status.js',
   './m4l-focus.js',
   './m4l-full-odds-worker.js',
+  './m4l-research/',
+  './m4l-research/index.html',
+  './m4l-research/model.js',
+  './m4l-research/app.js',
+  './m4l-research/research-sample-60.csv',
+  './m4l-research/supplied-holdout-30.csv',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
