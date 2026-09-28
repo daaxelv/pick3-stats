@@ -1,0 +1,4 @@
+model,tested_draws,avg_top5_hits,avg_top10_hits,avg_winner_rank,mb_top1_rate,avg_main_loglik,avg_mb_loglik
+GOD-ORIGIN,30,0.333333,0.766667,30.6,0.266667,-22.197557,-1.486567
+GOD-PHY,30,0.333333,0.766667,29.906667,0.266667,-21.441204,-1.486567
+UNIFORM,30,0.5,0.966667,29.253333,0.133333,-21.223977,-1.609438
