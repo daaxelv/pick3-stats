@@ -1414,6 +1414,74 @@ var _m4lFOReady    = false; // true after generation completes
 var _m4lFOLookupCb = null;  // pending exact-mode lookup callback
 var _m4lFOCCMap    = null;  // combo-count map for fast mode
 var _m4lFODrawNums = null, _m4lFODrawMB = null;
+var _m4lFORunId = null;
+var M4L_FO_JOURNAL_KEY = 'm4l-full-odds-runs-v1';
+function _m4lFOJournal() {
+  try { var runs = JSON.parse(localStorage.getItem(M4L_FO_JOURNAL_KEY) || '[]'); return Array.isArray(runs) ? runs : []; }
+  catch (e) { return []; }
+}
+function _m4lFOSaveRun(update) {
+  if (!_m4lFORunId) return;
+  try {
+    var runs = _m4lFOJournal(), idx = runs.findIndex(function(r){ return r.id === _m4lFORunId; });
+    if (idx < 0) runs.unshift({id:_m4lFORunId, started:new Date().toISOString()});
+    idx = runs.findIndex(function(r){ return r.id === _m4lFORunId; });
+    Object.assign(runs[idx], update);
+    localStorage.setItem(M4L_FO_JOURNAL_KEY, JSON.stringify(runs.slice(0, 20)));
+  } catch (e) { // Private browsing or a full storage quota must not stop the simulation.
+    var warning = document.getElementById('m4l-fo-save-warning');
+    if (warning) warning.textContent = 'Browser storage is unavailable. Download this run before leaving the page.';
+  }
+  _m4lFORenderJournal();
+}
+function _m4lFOStartJournal(mode, draw) {
+  _m4lFORunId = new Date().toISOString() + '-' + Math.random().toString(36).slice(2,8);
+  _m4lFOSaveRun({mode:mode, status:'running', draw:draw.nums, drawMB:draw.mb, completed:0});
+}
+function _m4lFOEsc(value) {
+  return String(value).replace(/[&<>"']/g, function(ch){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]; });
+}
+function _m4lFORenderJournal() {
+  var el = document.getElementById('m4l-fo-journal');
+  if (!el) return;
+  var runs = _m4lFOJournal();
+  el.innerHTML = '<div class="sectionTitle" style="font-size:14px;">Saved simulation runs</div>' +
+    '<div id="m4l-fo-save-warning" class="small warn"></div>' +
+    '<div class="small">Saved in this browser (latest 20). Export a JSON copy to keep it across devices or browser resets. An interrupted run retains its draw and progress, but has no final winners.</div>' +
+    (!runs.length ? '<div class="small">No saved runs yet.</div>' :
+      '<button class="secondary" onclick="m4lFOExportRuns()">Download saved runs</button>' +
+      '<div style="overflow-x:auto;"><table><thead><tr><th>Started</th><th>Mode</th><th>Status</th><th>Draw</th><th>Jackpot</th><th>Second</th><th>Third</th><th>Details</th></tr></thead><tbody>' +
+      runs.map(function(r) {
+        var ballText = Array.isArray(r.draw) ? r.draw.map(function(n){return ('0'+n).slice(-2);}).join('-') + ' MB:' + ('0'+r.drawMB).slice(-2) : '—';
+        return '<tr><td>' + _m4lFOEsc(r.started) + '</td><td>' + _m4lFOEsc(r.mode || '') + '</td><td>' + _m4lFOEsc(r.status === 'running' && r.id !== _m4lFORunId ? 'interrupted' : (r.status || '')) +
+          (r.status === 'running' ? ' (' + fmt(r.completed || 0) + ')' : '') + '</td><td class="mono">' + _m4lFOEsc(ballText) +
+          '</td><td>' + (r.tiers ? fmt(r.tiers[0]) : '—') + '</td><td>' + (r.tiers ? fmt(r.tiers[1]) : '—') + '</td><td>' +
+          (r.tiers ? fmt(r.tiers[2]) : '—') + '</td><td><button class="secondary" data-run-id="' +
+          _m4lFOEsc(r.id) + '" onclick="m4lFOShowSavedRun(this.dataset.runId)">View</button></td></tr>';
+      }).join('') + '</tbody></table></div>');
+}
+function m4lFOShowSavedRun(id) {
+  var run = _m4lFOJournal().find(function(r){return r.id === id;});
+  var el = document.getElementById('m4l-fo-saved-detail');
+  if (!run || !el) return;
+  var heading = '<strong>Saved draw:</strong> ' + _m4lFOEsc(run.draw.map(function(n){return ('0'+n).slice(-2);}).join('-') + ' MB:' + ('0'+run.drawMB).slice(-2));
+  if (!run.tiers) { el.innerHTML = heading + '<div>No final prize counts: ' + _m4lFOEsc(run.status) + '. ' + fmt(run.completed || 0) + ' tickets processed.</div>'; return; }
+  var list = (run.topWinners || []).map(function(group,i) {
+    var entries = Object.entries(group || {}).sort(function(a,b){return b[1]-a[1] || a[0].localeCompare(b[0]);});
+    return '<h4>' + _m4lFOEsc(['Jackpot (5 + MB)','Second (5)','Third (4 + MB)'][i]) + ': ' + fmt(run.tiers[i]) + ' tickets</h4>' +
+      (entries.length ? '<div style="overflow-x:auto;"><table><thead><tr><th>Ticket set</th><th>Copies</th></tr></thead><tbody>' +
+        entries.map(function(pair){return '<tr><td class="mono">'+_m4lFOEsc(pair[0])+'</td><td>'+fmt(pair[1])+'</td></tr>';}).join('') + '</tbody></table></div>' :
+        '<div class="small">' + (run.mode === 'fast' ? 'No winning tickets in the 200,000-ticket sample; displayed tier count is an estimate.' : 'No winning tickets in this tier.') + '</div>');
+  }).join('');
+  el.innerHTML = heading + '<div class="small">' + (run.mode === 'exact' ? 'Exact simulated ticket counts.' : 'Ticket copies are from the 200,000-ticket sample; displayed prize totals are scaled estimates.') + '</div>' + list;
+}
+function m4lFOExportRuns() {
+  var blob = new Blob([JSON.stringify(_m4lFOJournal(), null, 2)], {type:'application/json'});
+  var url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = 'm4l-full-odds-runs.json'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){URL.revokeObjectURL(url);}, 1000);
+}
+
 var _m4lFOFastTiers = null, _m4lFOFastExamples = null;
 var _m4lFocusRowsCache = [], _m4lFocusTotal = 0, _m4lFocusPage = 0;
 var _m4lFocusTarget = 'm4l-focus';
@@ -1798,6 +1866,8 @@ function m4lFODraw() {
   if (!_m4lFOReady) { showToast('Run the Full-Odds simulation first.', '#ff6b6b'); return; }
   if (_m4lFOMode === 'exact') { m4lFOStart(); return; }
   var draw = _m4lFONewDraw();
+  _m4lFOStartJournal('fast',draw);
+  var topWinners = [{},{},{}];
   var counts = Array(9).fill(0), examples = Array(9).fill(null), secondMB = Array(6).fill(0);
   _m4lFOSample.forEach(function(t) {
     var tier = _m4lFOScoreTicket(t.nums, t.mb, draw.nums, draw.mb);
@@ -1805,14 +1875,18 @@ function m4lFODraw() {
       counts[tier]++;
       if (!examples[tier]) examples[tier] = t;
       if (tier === 1) secondMB[t.mb]++;
+      if (tier <= 2) { var key = t.nums.map(function(n){return ('0'+n).slice(-2);}).join('-') + ' MB:' + ('0'+t.mb).slice(-2); topWinners[tier][key] = (topWinners[tier][key] || 0) + 1; }
     }
   });
   var scale = M4L_FO_TOTAL / M4L_FO_FAST_N;
+  _m4lFOSaveRun({status:'complete', completed:M4L_FO_FAST_N, tiers:counts.map(function(n){return Math.round(n*scale);}), topWinners:topWinners, finished:new Date().toISOString()});
   _m4lFOShowResult(draw.nums, draw.mb, counts.map(function(n){return Math.round(n*scale);}), examples, false,
     secondMB.map(function(n){return Math.round(n*scale);}));
+  m4lFOShowSavedRun(_m4lFORunId);
 }
 
 function m4lFOCancel() {
+  _m4lFOSaveRun({status:'cancelled', completed:_m4lFOProgDone});
   if (_m4lFOWorker) { _m4lFOWorker.terminate(); _m4lFOWorker = null; }
   _m4lFOMode = null; _m4lFOReady = false; _m4lFOSample = null;
   _m4lFOMargFreqs = null; _m4lFOLookupCb = null; _m4lFOCCMap = null;
@@ -1914,6 +1988,7 @@ function _m4lFOFail(message) {
   var txt = document.getElementById('m4l-fo-prog-txt');
   if (prog) prog.style.display = 'block';
   if (txt) txt.textContent = 'Simulation stopped: ' + message + ' Choose Fast mode or retry Exact.';
+  _m4lFOSaveRun({status:'failed', error:message, completed:_m4lFOProgDone});
   var start = document.getElementById('m4l-fo-start-btn');
   if (start) { start.disabled = false; start.textContent = '▶ Retry simulation'; }
   var cancel = document.getElementById('m4l-fo-cancel-btn');
@@ -1925,6 +2000,7 @@ function _m4lFOStartExact() {
   if (_m4lFOWorker) _m4lFOWorker.terminate();
   var draw = _m4lFONewDraw();
   _m4lFODrawNums = draw.nums; _m4lFODrawMB = draw.mb;
+  _m4lFOStartJournal('exact',draw);
   _m4lFOWorker = new Worker('m4l-full-odds-worker.js');
   _m4lFOProgDone  = 0;
   _m4lFOProgTotal = M4L_FO_TOTAL;
@@ -1937,6 +2013,7 @@ function _m4lFOStartExact() {
       // when the worker posts many messages in quick succession or the browser
       // throttles the worker thread on a slow device.
       _m4lFOProgDone  = d.done;
+      if (d.done === d.total || d.done % 1000000 < 250000) _m4lFOSaveRun({completed:d.done});
       _m4lFOProgTotal = d.total;
       if (!_m4lFOProgRaf) {
         _m4lFOProgRaf = true;
@@ -1945,7 +2022,9 @@ function _m4lFOStartExact() {
     } else if (d.type === 'done') {
       _m4lFOMode = 'exact';
       _m4lFOOnDone(d.margFreqs);
+      _m4lFOSaveRun({status:'complete', completed:M4L_FO_TOTAL, tiers:d.tiers, topWinners:d.topWinners, finished:new Date().toISOString()});
       _m4lFOShowResult(d.draw, d.drawMB, d.tiers, d.examples, true, d.secondMB);
+      m4lFOShowSavedRun(_m4lFORunId);
     } else if (d.type === 'focusResult') {
       _m4lFocusTotal = d.total; _m4lFocusPage = d.page;
       _m4lFocusRender(d.rows,d.total,d.page,'22,910,580 generated tickets','m4l-fo-focus');
@@ -2012,6 +2091,7 @@ function m4lFullOddsOpen() {
   var fastRad = document.getElementById('m4l-fo-mode-fast');
   var exRad   = document.getElementById('m4l-fo-mode-exact');
   if (fastRad && exRad) { fastRad.checked = isMobile; exRad.checked = !isMobile; }
+  _m4lFORenderJournal();
 }
 
 function m4lFOBatch100() {
@@ -2198,6 +2278,8 @@ function m4lSimCardHTML() {
         '</div>' +
 
       '</div>' +
+      '<div id="m4l-fo-journal" style="margin-top:16px;"></div>' +
+      '<div id="m4l-fo-saved-detail" style="margin-top:12px;"></div>' +
 
     '</div>' +
 

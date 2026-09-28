@@ -23,6 +23,8 @@ test('exact worker counts all prize tiers and keeps the 04 filter without storin
   assert.equal(done.tiers.reduce((a,b)=>a+b,0),1000);
   assert.equal(done.tiers[1],1000);
   assert.equal(done.secondMB[4],1000);
+  assert.equal(done.topWinners[1]['01-02-03-04-05 MB:04'], 1000);
+  assert.equal(Object.values(done.topWinners[1]).reduce((a,b)=>a+b,0), done.tiers[1]);
   assert.deepEqual([...done.draw],[1,2,3,4,5]);
   context.self.onmessage({data:{type:'focusPage',page:0,size:50}});
   const focus = messages.find(message => message.type === 'focusResult');
@@ -48,4 +50,6 @@ test('exact worker records jackpot and second prize by Millionaire Ball', () => 
   assert.equal(done.tiers[1],done.secondMB.reduce((a,b)=>a+b,0));
   assert.equal(done.secondMB[4],0);
   assert.ok(done.tiers.every(n => n >= 0));
+  for (let tier = 0; tier < 3; tier++)
+    assert.equal(Object.values(done.topWinners[tier]).reduce((a,b)=>a+b,0),done.tiers[tier]);
 });
