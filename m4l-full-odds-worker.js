@@ -1,7 +1,7 @@
 // Exact M4L crowd simulation. Keep aggregate results instead of millions of
 // string-keyed tickets, which can exhaust browser memory.
 let cumulative, totalWeight, total, completed, draw, drawMB;
-let frequency, tiers, examples, secondMB, focusCounts;
+let frequency, tiers, examples, secondMB, focusCounts, topWinners;
 let focusRows;
 const FOCUS_SIZE = 395010; // 57 choose 4: five main balls include 04
 const choose = Array.from({length: 58}, () => Array(6).fill(0));
@@ -66,6 +66,10 @@ function score(ticket) {
     tiers[tier]++;
     if (!examples[tier]) examples[tier] = ticket;
     if (tier === 1) secondMB[ticket.mb]++;
+    if (tier <= 2) {
+      const key = ticket.nums.map(n => String(n).padStart(2, '0')).join('-') + ' MB:' + String(ticket.mb).padStart(2, '0');
+      topWinners[tier][key] = (topWinners[tier][key] || 0) + 1;
+    }
   }
 }
 
@@ -75,7 +79,7 @@ function chunk() {
   self.postMessage({type: 'progress', done: completed, total});
   if (completed < total) setTimeout(chunk, 0);
   else self.postMessage({type: 'done', margFreqs: Array.from(frequency), tiers,
-    examples, secondMB, draw, drawMB});
+    examples, secondMB, draw, drawMB, topWinners});
 }
 
 function focusPage(page, size) {
@@ -111,6 +115,7 @@ self.onmessage = ({data}) => {
     tiers = Array(9).fill(0);
     examples = Array(9).fill(null);
     secondMB = Array(6).fill(0);
+    topWinners = [{}, {}, {}];
     focusCounts = new Uint32Array(FOCUS_SIZE);
     focusRows = null;
     setTimeout(chunk, 0);
