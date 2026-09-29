@@ -1,0 +1,44 @@
+name: Update NJ Scratch-Off locations
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '24 9 * * *'
+  push:
+    branches: [scratchoff-map]
+    paths:
+      - 'scratchoffs/**'
+      - '.github/workflows/scratchoffs-update.yml'
+permissions:
+  contents: write
+concurrency:
+  group: scratchoffs-snapshot
+  cancel-in-progress: false
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - name: Collect official game and retailer pages
+        env:
+          SCRATCH_MAX_GAMES: '5000'
+          SCRATCH_MAX_SEARCHES: '22'
+        run: node scratchoffs/scripts/collect.mjs
+      - name: Geocode public store addresses
+        if: always()
+        run: python3 scratchoffs/scripts/geocode.py
+      - name: Commit updated snapshots
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scratchoffs/data
+          if ! git diff --cached --quiet; then
+            git commit -m "Update NJ scratch-off winner and retailer snapshot"
+            git push
+          fi
