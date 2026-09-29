@@ -46,6 +46,8 @@ try {
     const old = byId.get(game.id);
     // The full active/ended catalog refreshes; expired games are historical and stable.
     if (game.status === 'expired' && old?.scanned_at) continue;
+    scanned++;
+    try {
     await page.goto(game.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForFunction(() => {
       const tables = [...document.querySelectorAll('table')];
@@ -93,12 +95,18 @@ try {
     }
     delete item.pagination;
     item.locations = [...new Map(item.locations.map(w => [`${key(w.address,w.town)}|${w.amount}`,w])).values()];
+    if (!item.locations.length && old?.locations?.length) {
+      console.warn(`Keeping ${old.locations.length} previous winner locations for ${game.id}; source returned none`);
+      item.locations = old.locations;
+    }
     byId.set(game.id, { ...game, ...item, scanned_at: now });
     games.entries = [...byId.values()].sort((a,b) => b.id.localeCompare(a.id));
     games.updated_at = now;
     await save('games.json', games);
-    scanned++;
     console.log(`game ${game.id}: ${item.locations.length} top prize locations`);
+    } catch (error) {
+      console.warn(`Game ${game.id} unavailable: ${error.message.slice(0,180)}`);
+    }
   }
 
   const byStore = new Map(retailers.entries.map(r => [key(r.address,r.town),r]));
