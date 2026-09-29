@@ -26,8 +26,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Collect official game and retailer pages
         env:
-          SCRATCH_MAX_GAMES: ${{ github.event_name == 'push' && '20' || '5000' }}
-          SCRATCH_MAX_SEARCHES: ${{ github.event_name == 'push' && '2' || '22' }}
+          SCRATCH_MAX_GAMES: '5000'
+          SCRATCH_MAX_SEARCHES: '22'
         run: node scratchoffs/scripts/collect.mjs
       - name: Geocode public store addresses
         if: always()
