@@ -30,8 +30,10 @@ jobs:
           SCRATCH_MAX_SEARCHES: ${{ github.event_name == 'push' && '2' || '22' }}
         run: node scratchoffs/scripts/collect.mjs
       - name: Geocode public store addresses
+        if: always()
         run: python3 scratchoffs/scripts/geocode.py
       - name: Commit updated snapshots
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
