@@ -43,10 +43,10 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
-  const isDataCsv = url.pathname.endsWith('/data/nj_numbers_canonical.csv') || url.pathname.endsWith('/data/feed-status.json');
+  const isFreshData = url.pathname.endsWith('/data/nj_numbers_canonical.csv') || url.pathname.endsWith('/data/feed-status.json') || url.pathname.endsWith('/quickdraw/data/coverage.json') || url.pathname.endsWith('/quickdraw/data/history.json');
 
-  if (isDataCsv) {
-    // Network-first for the results data: freshness matters more than speed.
+  if (isFreshData) {
+    // Network-first for results and Quick Draw snapshots: freshness matters more than speed.
     event.respondWith(
       fetch(req)
         .then((res) => {
