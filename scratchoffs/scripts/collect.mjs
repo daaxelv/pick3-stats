@@ -116,6 +116,8 @@ try {
   let searches = 0;
   for (const city of orderedSeeds) {
     if (searched.has(city) || searches >= maxRetailerSearches) continue;
+    searches++;
+    try {
     // A fresh page resets the map carousel, which can cover the search form
     // after many batches have loaded.
     await page.goto(retailerUrl, { waitUntil:'domcontentloaded', timeout:60000 });
@@ -149,7 +151,11 @@ try {
     retailers.updated_at = now;
     await save('retailers.json',retailers);
     searched.add(city);
-    searches++;
     console.log(`${city}: ${found.length}, unique ${byStore.size}`);
+    } catch (error) {
+      // One unreliable search must not discard the other cities or fail the run.
+      // Keep the area uncollected so it can be retried on the next run.
+      console.warn(`Retailer search ${city} unavailable: ${error.message.slice(0,180)}`);
+    }
   }
 } finally { await browser.close(); }
