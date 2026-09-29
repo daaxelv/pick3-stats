@@ -80,7 +80,7 @@ textarea{width:100%;min-height:240px;resize:vertical}
   <div class="header">
     <div class="h1">NJ Quick Draw Progressive Ghost Engine</div>
     <div class="sub">Same ghost-engine idea as your Pick 3 tool, rebuilt for <strong>Quick Draw set play</strong>. Run agents, rank target sets, cache your best portfolios, and analyze your own number sets against imported official history.</div>
-    <div class="disclaimer">This engine is a simulation and ranking tool. Historical rankings cannot predict random draws or improve a ticket's chance of winning. The official archive is still being backfilled; check Data Coverage before interpreting results.</div>
+    <div class="disclaimer">This engine is a simulation and ranking tool. Historical rankings cannot predict random draws or improve a ticket's chance of winning. Check Data Coverage for the current verified archive and latest draw before interpreting results.</div>
     <div style="margin-top:10px;"><a href="../" style="color:var(--cyan);">← Pick 3 / Pick 4 / M4L engine</a></div>
   </div>
 
@@ -499,7 +499,7 @@ function renderEngineResults(){
     </div>
     <div class="card" style="margin-bottom:16px;">
       <div class="sectionTitle">Top 10 plays · real draw cross-reference</div>
-      <div class="notice" style="margin-bottom:12px;">Ranked by the simulation score, not winning probability. Exact means every selected number appeared among the 20 drawn balls; one short means all but one appeared. Checked against <strong>${historyCount} draws currently loaded in this browser</strong>, including any imported results. The official archive still has historical gaps, so zero means no match in this checked window.</div>
+      <div class="notice" style="margin-bottom:12px;">Ranked by the simulation score, not winning probability. Exact means every selected number appeared among the 20 drawn balls; one short means all but one appeared. Checked against <strong>${historyCount} draws currently loaded in this browser</strong>, including any imported results. The cross-reference checks only the draws loaded in this browser, so zero means no match in that checked window.</div>
       <div class="tableWrap"><table><thead><tr><th>Rank</th><th>Numbers</th><th>Score</th><th>Exact matches</th><th>One short</th></tr></thead><tbody>${matchRows}</tbody></table></div>
     </div>
     <div class="cols" style="margin-bottom:16px;">
@@ -845,7 +845,7 @@ function renderDataTab(){
     <div class="grid2">
       <div class="card">
         <div class="sectionTitle">Official history import</div>
-        <div class="notice">The bundled official archive loads automatically. Current coverage has a large historical gap; check the coverage panel before using the statistics. Paste official Quick Draw draw rows here. Best format: <span class="mono">date|draw_no|20 numbers|bullseye=xx|double=yy</span>. BULLSEYE fields are optional. The sync button below tries only the latest official draw, not the full history.</div>
+        <div class="notice">The bundled official archive loads automatically. Check the coverage panel for the current archive count and any draw-number gaps. Paste official Quick Draw draw rows here. Best format: <span class="mono">date|draw_no|20 numbers|bullseye=xx|double=yy</span>. BULLSEYE fields are optional. The sync button below tries only the latest official draw, not the full history.</div>
         <textarea id="importBox" placeholder="${sample}"></textarea>
         <div class="controls" style="margin-top:12px;">
           <button class="primary" onclick="importHistory()">Import pasted history</button>
