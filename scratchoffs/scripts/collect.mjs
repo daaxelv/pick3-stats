@@ -49,7 +49,8 @@ try {
     await page.goto(game.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForFunction(() => {
       const tables = [...document.querySelectorAll('table')];
-      return tables.some(t => /Prize Amount/i.test(t.querySelector('th')?.textContent || '') && t.querySelectorAll('tbody tr').length);
+      return [...document.querySelectorAll('h2')].some(h => / - \$/.test(h.textContent)) &&
+        tables.some(t => /Prize Amount/i.test(t.querySelector('th')?.textContent || '') && t.querySelectorAll('tbody tr').length);
     }, null, { timeout: 30000 });
     const item = await page.evaluate(() => {
       const txt = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
@@ -115,7 +116,9 @@ try {
     while (await page.getByRole('button', { name:'View more results' }).count()) {
       const before = await page.locator('.retailer.slick-slide:not(.slick-cloned)').count();
       if (before >= total) break;
-      await page.getByRole('button', { name:'View more results' }).click();
+      // The locator is inside a map carousel and Playwright cannot always
+      // scroll it into view; the site's own button handler is still active.
+      await page.evaluate(() => document.querySelector('#fetchMoreLocationsBtn')?.click());
       await page.waitForFunction(n => document.querySelectorAll('.retailer.slick-slide:not(.slick-cloned)').length > n, before, { timeout:30000 });
     }
     const found = await page.locator('.retailer.slick-slide:not(.slick-cloned)').evaluateAll(elements => elements.map(el => {
