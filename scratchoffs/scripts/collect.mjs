@@ -29,8 +29,12 @@ try {
   const catalog = new Map();
   for (const status of ['active','ended','expired']) {
     await page.getByRole('tab', { name: status, exact: true }).click();
-    await page.waitForFunction(() => document.querySelectorAll('a[href$=".html"][href*="/scratch-offs/0"]').length > 20);
-    const entries = await page.locator('a[href*="/scratch-offs/0"]').evaluateAll(links =>
+    await page.waitForFunction(name => {
+      const panel = document.querySelector(`[role="tabpanel"][id="${name}"]`);
+      return panel && getComputedStyle(panel).display !== 'none' &&
+        panel.querySelectorAll('a[href*="/scratch-offs/0"]').length > 0;
+    }, status, { timeout:30000 });
+    const entries = await page.locator(`[role="tabpanel"][id="${status}"] a[href*="/scratch-offs/0"]`).evaluateAll(links =>
       [...new Set(links.map(a => a.getAttribute('href')))].filter(h => /\/0\d{4}\.html$/.test(h)));
     for (const href of entries) catalog.set(href.match(/(0\d{4})\.html$/)[1], { id: href.match(/(0\d{4})\.html$/)[1], status, url: new URL(href, catalogUrl).href });
     console.log(status, entries.length);
@@ -66,7 +70,10 @@ try {
         pagination:[...document.querySelectorAll('a[href*="/api/v1/locations/luckylocations/page"]')].map(a => a.getAttribute('href')),
       };
     });
-    if (!item.name || !item.prize_levels.length) throw new Error(`Incomplete game ${game.id}`);
+    if (!item.name || !item.prize_levels.length) {
+      console.warn(`Skipping incomplete game ${game.id}; title=${JSON.stringify(item.name)}, prize rows=${item.prize_levels.length}`);
+      continue;
+    }
     // Pagination is shown for games with more than twenty winning locations.
     const pages = new Set(item.pagination);
     for (const href of pages) {
