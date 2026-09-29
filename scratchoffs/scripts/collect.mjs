@@ -103,7 +103,7 @@ try {
 
   await page.goto(retailerUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
   const byStore = new Map(retailers.entries.map(r => [key(r.address,r.town),r]));
-  const searched = new Set(retailers.search_areas.map(a => a.name));
+  const searched = new Set(retailers.search_areas.filter(a => a.complete).map(a => a.name));
   let searches = 0;
   for (const city of seeds) {
     if (searched.has(city) || searches >= maxRetailerSearches) continue;
@@ -116,20 +116,23 @@ try {
     while (await page.getByRole('button', { name:'View more results' }).count()) {
       const before = await page.locator('.retailer.slick-slide:not(.slick-cloned)').count();
       if (before >= total) break;
-      // The locator is inside a map carousel and Playwright cannot always
-      // scroll it into view; the site's own button handler is still active.
-      await page.evaluate(() => document.querySelector('#fetchMoreLocationsBtn')?.click());
-      await page.waitForFunction(n => document.querySelectorAll('.retailer.slick-slide:not(.slick-cloned)').length > n, before, { timeout:30000 });
+      try {
+        await page.getByRole('button', { name:'View more results' }).click({ force:true, timeout:8000 });
+        await page.waitForFunction(n => document.querySelectorAll('.retailer.slick-slide:not(.slick-cloned)').length > n, before, { timeout:8000 });
+      } catch (error) {
+        console.warn(`Retailer paging paused for ${city} after ${before}/${total}: ${error.message.slice(0,100)}`);
+        break;
+      }
     }
     const found = await page.locator('.retailer.slick-slide:not(.slick-cloned)').evaluateAll(elements => elements.map(el => {
       const address = [...el.querySelectorAll('.retailer-list-address')].map(x => x.textContent.trim());
       const match = address[1]?.match(/^(.*?),\s*NJ\s*(\d{5})/i);
       return { name:el.querySelector('h4')?.textContent.trim().replace(/^\*\s*/,''), address:address[0], town:match?.[1]?.trim() || '', zip:match?.[2] || '', hangout:!!el.querySelector('.retailer-list-hangout') };
     }).filter(r => r.name && r.address && r.town));
-    if (found.length < total) throw new Error(`Incomplete retailer search ${city}: ${found.length}/${total}`);
     for (const r of found) byStore.set(key(r.address,r.town),r);
     retailers.entries = [...byStore.values()].sort((a,b) => a.town.localeCompare(b.town) || a.name.localeCompare(b.name));
-    retailers.search_areas.push({ name:city, radius_miles:30, reported:total, collected:found.length });
+    retailers.search_areas = retailers.search_areas.filter(a => a.name !== city);
+    retailers.search_areas.push({ name:city, radius_miles:30, reported:total, collected:found.length, complete:found.length >= total });
     retailers.updated_at = now;
     await save('retailers.json',retailers);
     searched.add(city);
