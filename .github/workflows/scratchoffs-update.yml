@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: '24 9 * * *'
   push:
-    branches: [scratchoff-map]
+    branches: [scratchoffs-ready, main]
     paths:
       - 'scratchoffs/**'
       - '.github/workflows/scratchoffs-update.yml'
