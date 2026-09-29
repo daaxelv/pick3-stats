@@ -101,12 +101,16 @@ try {
     console.log(`game ${game.id}: ${item.locations.length} top prize locations`);
   }
 
-  await page.goto(retailerUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
   const byStore = new Map(retailers.entries.map(r => [key(r.address,r.town),r]));
   const searched = new Set(retailers.search_areas.filter(a => a.complete).map(a => a.name));
+  const tried = new Set(retailers.search_areas.map(a => a.name));
+  const orderedSeeds = [...seeds.filter(city => !tried.has(city)), ...seeds.filter(city => tried.has(city) && !searched.has(city))];
   let searches = 0;
-  for (const city of seeds) {
+  for (const city of orderedSeeds) {
     if (searched.has(city) || searches >= maxRetailerSearches) continue;
+    // A fresh page resets the map carousel, which can cover the search form
+    // after many batches have loaded.
+    await page.goto(retailerUrl, { waitUntil:'domcontentloaded', timeout:60000 });
     await page.getByPlaceholder('ENTER ZIP CODE OR CITY').fill(city);
     await page.getByRole('main').getByRole('combobox').selectOption({ label:'30 Miles' });
     await page.getByRole('main').getByRole('button', { name:'SEARCH NOW' }).click();
@@ -116,6 +120,7 @@ try {
     while (await page.getByRole('button', { name:'View more results' }).count()) {
       const before = await page.locator('.retailer.slick-slide:not(.slick-cloned)').count();
       if (before >= total) break;
+      if (before >= 1000) break; // bounded first pass; revisit incomplete areas later
       try {
         await page.getByRole('button', { name:'View more results' }).click({ force:true, timeout:8000 });
         await page.waitForFunction(n => document.querySelectorAll('.retailer.slick-slide:not(.slick-cloned)').length > n, before, { timeout:8000 });
