@@ -69,7 +69,18 @@
     const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='nj-scratchoff-'+state.mode+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   };
-  Promise.all(['data/games.json','data/retailers.json','data/coordinates.json','data/address-zips.json','data/income.json','data/archive.json'].map(url=>fetch(url,{cache:'no-store'}).then(r=>{if(!r.ok)throw Error(url+' '+r.status);return r.json();}))).then(([games,retailers,coords,zips,income,archive])=>{
+  const snapshotRoot=window.location?.hostname==='daaxelv.github.io' ? 'https://raw.githubusercontent.com/daaxelv/pick3-stats/main/scratchoffs/' : '';
+  async function loadSnapshot(url) {
+    if(snapshotRoot) {
+      try {
+        const r=await fetch(snapshotRoot+url,{cache:'no-store',signal:AbortSignal.timeout(15000)});
+        if(!r.ok)throw Error('Repository snapshot '+r.status);
+        return await r.json();
+      } catch(error) { /* The deployed snapshot remains usable offline or during source outages. */ }
+    }
+    const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error(url+' '+r.status);return r.json();
+  }
+  Promise.all(['data/games.json','data/retailers.json','data/coordinates.json','data/address-zips.json','data/income.json','data/archive.json'].map(loadSnapshot)).then(([games,retailers,coords,zips,income,archive])=>{
     state.games=games.entries||[];state.stores=retailers.entries||[];state.coordinates=coords;
     state.winners=state.games.flatMap(g=>(g.locations||[]).map(w=>({...w,game:g.name,id:g.id,status:g.status,url:g.url,amount_number:money(w.amount)})));
     state.winners=state.winners.map(r=>ScratchModel.enrich(r,zips,income));
