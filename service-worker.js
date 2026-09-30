@@ -3,7 +3,7 @@
 // and can be added to the home screen, while always fetching the live
 // results CSV from the network first (falling back to cache only if the
 // network is unavailable) so stats never go stale on purpose.
-const CACHE_VERSION = 'ghost-engine-v12-scratchoffs-quickdraw';
+const CACHE_VERSION = 'ghost-engine-v13-scratchoffs-income';
 const APP_SHELL = [
   './',
   './index.html',
@@ -21,7 +21,7 @@ const APP_SHELL = [
   './m4l-research/supplied-holdout-30.csv',
   './scratchoffs/',
   './scratchoffs/index.html',
-  './scratchoffs/app.js',
+  './scratchoffs/app.js', './scratchoffs/model.js',
   './scratchoffs/style.css',
   './manifest.webmanifest',
   './icons/icon-192.png',
