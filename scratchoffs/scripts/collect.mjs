@@ -42,9 +42,10 @@ try {
   // The search catalog retains older games absent from the main tabs.
   try {
     await page.goto('https://www.njlottery.com/en-us/scratch-offs/search.html', {waitUntil:'domcontentloaded',timeout:60000});
-    await page.locator('a[href*="/scratch-offs/0"]').first().waitFor({timeout:30000});
-    const older = await page.locator('a[href*="/scratch-offs/0"]').evaluateAll(links => [...new Set(links.map(a=>a.href))].filter(h=>/\/0\d{4}\.html$/.test(h)));
-    for (const url of older) { const id=url.match(/(0\d{4})\.html$/)[1]; if(!catalog.has(id)) catalog.set(id,{id,status:'expired',url,discovered_via:'official archive search'}); }
+    await page.getByRole('button',{name:'Search',exact:true}).click();
+    await page.locator('table a[href*="/scratch-offs/0"]').first().waitFor({timeout:30000});
+    const older = await page.locator('table tbody tr').evaluateAll(rows=>rows.map(tr=>{const a=tr.querySelector('a[href*="/scratch-offs/0"]'),c=[...tr.querySelectorAll('td')].map(c=>c.textContent.trim());return a?{url:a.href,start_date:c[3],end_date:c[4],expiration_date:c[5]}:null;}).filter(Boolean));
+    for (const entry of older) { const id=entry.url.match(/(0\d{4})\.html$/)[1]; entry.url=new URL('/en-us/scratch-offs/'+id+'.html',catalogUrl).href; if(!catalog.has(id)) catalog.set(id,{id,status:'expired',...entry,discovered_via:'official archive search'}); }
     console.log('Catalog including older games',catalog.size);
   } catch(error) { console.warn('Older catalog unavailable:',error.message); }
   const byId = new Map(games.entries.map(g => [g.id, g]));
@@ -57,7 +58,8 @@ try {
     if (game.status === 'expired' && old?.scanned_at) continue;
     scanned++;
     try {
-    await page.goto(game.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    const response = await page.goto(game.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    if(response?.status()>=400 || /\/error\//.test(page.url())) {console.warn('Historical detail unavailable',game.id);continue;}
     await page.waitForFunction(() => {
       const tables = [...document.querySelectorAll('table')];
       return [...document.querySelectorAll('h2')].some(h => / - \$/.test(h.textContent)) &&
@@ -108,7 +110,7 @@ try {
       console.warn(`Keeping ${old.locations.length} previous winner locations for ${game.id}; source returned none`);
       item.locations = old.locations;
     }
-    byId.set(game.id, { ...game, ...item, scanned_at: now });
+    byId.set(game.id, { ...game, ...item, start_date:game.start_date||item.start_date, scanned_at: now });
     games.entries = [...byId.values()].sort((a,b) => b.id.localeCompare(a.id));
     games.updated_at = now;
     await save('games.json', games);
