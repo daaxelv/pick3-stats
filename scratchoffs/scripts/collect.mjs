@@ -91,7 +91,8 @@ try {
     // Follow the changing Next link until the source has no more pages.
     // page_link identifies the current zero-based page, not an active class.
     item.pagination_complete = false;
-    for (let count=0; count<100; count++) {
+    let pageFailures=0;
+    for (let count=0; count<1000; count++) {
       const next=page.locator('a.next_link[href*="/api/v1/locations/luckylocations/page"]');
       if(!await next.count()){item.pagination_complete=true;break;}
       const href=await next.getAttribute('href');
@@ -104,7 +105,8 @@ try {
           return [...(table?.querySelectorAll('tbody tr')||[])].map(tr=>[...tr.querySelectorAll('td')].map(td=>td.textContent.trim())).filter(r=>r.length>=4).map(r=>({retailer:r[0],address:r[1],town:r[2],amount:r[3],closed:/\*\*/.test(r[0])}));
         });
         item.locations.push(...extra);
-      } catch(error) {console.warn('Incomplete winner pagination',game.id,error.message);break;}
+        pageFailures=0;
+      } catch(error) {if(++pageFailures<2){count--;continue;} console.warn('Incomplete winner pagination',game.id,error.message);break;}
     }
     delete item.pagination;
     item.locations = [...new Map(item.locations.map(w => [`${key(w.address,w.town)}|${w.amount}`,w])).values()];
