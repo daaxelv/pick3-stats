@@ -53,9 +53,9 @@ try {
   for (const game of [...catalog.values()].sort((a,b)=>Number(!byId.has(b.id))-Number(!byId.has(a.id)))) {
     if (scanned >= maxGames) break;
     const old = byId.get(game.id);
-    if (process.env.SCRATCH_ARCHIVE_ONLY === '1' && old) continue;
+    if (process.env.SCRATCH_ARCHIVE_ONLY === '1' && old && !(old.locations?.length >= 20 && !old.pagination_complete)) continue;
     // The full active/ended catalog refreshes; expired games are historical and stable.
-    if (game.status === 'expired' && old?.scanned_at) continue;
+    if (game.status === 'expired' && old?.pagination_complete) continue;
     scanned++;
     try {
     const response = await page.goto(game.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -88,21 +88,23 @@ try {
       console.warn(`Skipping incomplete game ${game.id}; title=${JSON.stringify(item.name)}, prize rows=${item.prize_levels.length}`);
       continue;
     }
-    // Pagination is shown for games with more than twenty winning locations.
-    const pages = new Set(item.pagination);
-    for (const href of pages) {
-      const p = Number(new URL(href, game.url).searchParams.get('page'));
-      if (!p) continue;
-      await page.locator(`a[href="${href}"]`).click();
-      await page.waitForFunction(want => {
-        const active = [...document.querySelectorAll('a[href*="/api/v1/locations/luckylocations/page"]')].find(a => a.classList.contains('active'));
-        return active ? Number(new URL(active.href).searchParams.get('page')) === want : true;
-      }, p).catch(() => {});
-      const extra = await page.evaluate(() => {
-        const table = [...document.querySelectorAll('table')].find(t => /Retailer/i.test(t.querySelector('th')?.textContent || '') && /Town/i.test(t.textContent));
-        return [...(table?.querySelectorAll('tbody tr') || [])].map(tr => [...tr.querySelectorAll('td')].map(td => td.textContent.trim())).filter(r => r.length >= 4).map(r => ({ retailer:r[0], address:r[1], town:r[2], amount:r[3], closed:/\*\*/.test(r[0]) }));
-      });
-      item.locations.push(...extra);
+    // Follow the changing Next link until the source has no more pages.
+    // page_link identifies the current zero-based page, not an active class.
+    item.pagination_complete = false;
+    for (let count=0; count<100; count++) {
+      const next=page.locator('a.next_link[href*="/api/v1/locations/luckylocations/page"]');
+      if(!await next.count()){item.pagination_complete=true;break;}
+      const href=await next.getAttribute('href');
+      const wanted=Number(new URL(href,game.url).searchParams.get('page'));
+      try {
+        await next.click();
+        await page.waitForFunction(want=>[...document.querySelectorAll('a.page_link[href*="luckylocations"]')].some(a=>Number(new URL(a.href).searchParams.get('page'))===want),wanted,{timeout:15000});
+        const extra = await page.evaluate(() => {
+          const table=[...document.querySelectorAll('table')].find(t=>/Retailer/i.test(t.querySelector('th')?.textContent||'') && /Town/i.test(t.textContent));
+          return [...(table?.querySelectorAll('tbody tr')||[])].map(tr=>[...tr.querySelectorAll('td')].map(td=>td.textContent.trim())).filter(r=>r.length>=4).map(r=>({retailer:r[0],address:r[1],town:r[2],amount:r[3],closed:/\*\*/.test(r[0])}));
+        });
+        item.locations.push(...extra);
+      } catch(error) {console.warn('Incomplete winner pagination',game.id,error.message);break;}
     }
     delete item.pagination;
     item.locations = [...new Map(item.locations.map(w => [`${key(w.address,w.town)}|${w.amount}`,w])).values()];
