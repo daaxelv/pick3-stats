@@ -39,16 +39,27 @@ try {
     for (const href of entries) catalog.set(href.match(/(0\d{4})\.html$/)[1], { id: href.match(/(0\d{4})\.html$/)[1], status, url: new URL(href, catalogUrl).href });
     console.log(status, entries.length);
   }
+  // The search catalog retains older games absent from the main tabs.
+  try {
+    await page.goto('https://www.njlottery.com/en-us/scratch-offs/search.html', {waitUntil:'domcontentloaded',timeout:60000});
+    await page.getByRole('button',{name:'Search',exact:true}).click();
+    await page.locator('table a[href*="/scratch-offs/0"]').first().waitFor({timeout:30000});
+    const older = await page.locator('table tbody tr').evaluateAll(rows=>rows.map(tr=>{const a=tr.querySelector('a[href*="/scratch-offs/0"]'),c=[...tr.querySelectorAll('td')].map(c=>c.textContent.trim());return a?{url:a.href,start_date:c[3],end_date:c[4],expiration_date:c[5]}:null;}).filter(Boolean));
+    for (const entry of older) { const id=entry.url.match(/(0\d{4})\.html$/)[1]; entry.url=new URL('/en-us/scratch-offs/'+id+'.html',catalogUrl).href; if(!catalog.has(id)) catalog.set(id,{id,status:'expired',...entry,discovered_via:'official archive search'}); }
+    console.log('Catalog including older games',catalog.size);
+  } catch(error) { console.warn('Older catalog unavailable:',error.message); }
   const byId = new Map(games.entries.map(g => [g.id, g]));
   let scanned = 0;
-  for (const game of catalog.values()) {
+  for (const game of [...catalog.values()].sort((a,b)=>Number(!byId.has(b.id))-Number(!byId.has(a.id)))) {
     if (scanned >= maxGames) break;
     const old = byId.get(game.id);
+    if (process.env.SCRATCH_ARCHIVE_ONLY === '1' && old && !(old.locations?.length >= 20 && !old.pagination_complete)) continue;
     // The full active/ended catalog refreshes; expired games are historical and stable.
-    if (game.status === 'expired' && old?.scanned_at) continue;
+    if (game.status === 'expired' && old?.pagination_complete) continue;
     scanned++;
     try {
-    await page.goto(game.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    const response = await page.goto(game.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    if(response?.status()>=400 || /\/error\//.test(page.url())) {console.warn('Historical detail unavailable',game.id);continue;}
     await page.waitForFunction(() => {
       const tables = [...document.querySelectorAll('table')];
       return [...document.querySelectorAll('h2')].some(h => / - \$/.test(h.textContent)) &&
@@ -77,21 +88,25 @@ try {
       console.warn(`Skipping incomplete game ${game.id}; title=${JSON.stringify(item.name)}, prize rows=${item.prize_levels.length}`);
       continue;
     }
-    // Pagination is shown for games with more than twenty winning locations.
-    const pages = new Set(item.pagination);
-    for (const href of pages) {
-      const p = Number(new URL(href, game.url).searchParams.get('page'));
-      if (!p) continue;
-      await page.locator(`a[href="${href}"]`).click();
-      await page.waitForFunction(want => {
-        const active = [...document.querySelectorAll('a[href*="/api/v1/locations/luckylocations/page"]')].find(a => a.classList.contains('active'));
-        return active ? Number(new URL(active.href).searchParams.get('page')) === want : true;
-      }, p).catch(() => {});
-      const extra = await page.evaluate(() => {
-        const table = [...document.querySelectorAll('table')].find(t => /Retailer/i.test(t.querySelector('th')?.textContent || '') && /Town/i.test(t.textContent));
-        return [...(table?.querySelectorAll('tbody tr') || [])].map(tr => [...tr.querySelectorAll('td')].map(td => td.textContent.trim())).filter(r => r.length >= 4).map(r => ({ retailer:r[0], address:r[1], town:r[2], amount:r[3], closed:/\*\*/.test(r[0]) }));
-      });
-      item.locations.push(...extra);
+    // Follow the changing Next link until the source has no more pages.
+    // page_link identifies the current zero-based page, not an active class.
+    item.pagination_complete = false;
+    let pageFailures=0;
+    for (let count=0; count<1000; count++) {
+      const next=page.locator('a.next_link[href*="/api/v1/locations/luckylocations/page"]');
+      if(!await next.count()){item.pagination_complete=true;break;}
+      const href=await next.getAttribute('href');
+      const wanted=Number(new URL(href,game.url).searchParams.get('page'));
+      try {
+        await next.click();
+        await page.waitForFunction(want=>[...document.querySelectorAll('a.page_link[href*="luckylocations"]')].some(a=>Number(new URL(a.href).searchParams.get('page'))===want),wanted,{timeout:15000});
+        const extra = await page.evaluate(() => {
+          const table=[...document.querySelectorAll('table')].find(t=>/Retailer/i.test(t.querySelector('th')?.textContent||'') && /Town/i.test(t.textContent));
+          return [...(table?.querySelectorAll('tbody tr')||[])].map(tr=>[...tr.querySelectorAll('td')].map(td=>td.textContent.trim())).filter(r=>r.length>=4).map(r=>({retailer:r[0],address:r[1],town:r[2],amount:r[3],closed:/\*\*/.test(r[0])}));
+        });
+        item.locations.push(...extra);
+        pageFailures=0;
+      } catch(error) {if(++pageFailures<2){count--;continue;} console.warn('Incomplete winner pagination',game.id,error.message);break;}
     }
     delete item.pagination;
     item.locations = [...new Map(item.locations.map(w => [`${key(w.address,w.town)}|${w.amount}`,w])).values()];
@@ -99,7 +114,7 @@ try {
       console.warn(`Keeping ${old.locations.length} previous winner locations for ${game.id}; source returned none`);
       item.locations = old.locations;
     }
-    byId.set(game.id, { ...game, ...item, scanned_at: now });
+    byId.set(game.id, { ...game, ...item, start_date:game.start_date||item.start_date, scanned_at: now });
     games.entries = [...byId.values()].sort((a,b) => b.id.localeCompare(a.id));
     games.updated_at = now;
     await save('games.json', games);

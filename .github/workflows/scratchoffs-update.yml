@@ -1,6 +1,11 @@
 name: Update NJ Scratch-Off locations
 on:
   workflow_dispatch:
+    inputs:
+      archive_only:
+        description: 'Scan newly discovered older games only'
+        type: boolean
+        default: false
   schedule:
     - cron: '24 9 * * *'
   push:
@@ -27,11 +32,15 @@ jobs:
       - name: Collect official game and retailer pages
         env:
           SCRATCH_MAX_GAMES: '5000'
-          SCRATCH_MAX_SEARCHES: '22'
+          SCRATCH_MAX_SEARCHES: ${{ inputs.archive_only && '0' || '22' }}
+          SCRATCH_ARCHIVE_ONLY: ${{ inputs.archive_only && '1' || '0' }}
         run: node scratchoffs/scripts/collect.mjs
       - name: Geocode public store addresses
         if: always()
         run: python3 scratchoffs/scripts/geocode.py
+      - name: Collect Census area income
+        if: always()
+        run: python3 scratchoffs/scripts/income.py
       - name: Commit updated snapshots
         if: always()
         run: |

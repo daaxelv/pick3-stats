@@ -19,11 +19,17 @@
     <label>Minimum top prize<select id="minimum"><option value="0">All amounts</option><option value="10000">$10,000+</option><option value="100000">$100,000+</option><option value="1000000">$1 million+</option></select></label>
     <label>Town<select id="town"><option value="">All towns</option></select></label>
   </div>
-  <div class="switches"><button id="winnerMode" class="on" type="button">Top-prize locations</button><button id="retailerMode" type="button">Current retailer search results</button></div>
+  <div class="controls">
+    <label>ZIP code<select id="zip"><option value="">All ZIPs</option></select></label>
+    <label>Area income bracket<select id="income"><option value="">All income brackets</option></select></label>
+  </div>
+  <p id="incomeInfo" class="notice"></p>
+  <div class="switches"><button id="winnerMode" class="on" type="button">Top-prize locations</button><button id="retailerMode" type="button">Current retailer search results</button><button id="zipMode" type="button">ZIP / income cross-reference</button><button id="archiveMode" type="button">Older winner reports</button></div>
   <div class="map-wrap"><div id="map" aria-label="Map of New Jersey prize locations and retailers"></div><div class="map-note" id="mapNote"></div></div>
   <div class="section-head"><div><h2 id="listTitle">Published top-prize locations</h2><p id="listInfo"></p></div><button id="download" type="button">Download visible CSV</button></div>
   <div class="table-wrap"><table><thead id="head"></thead><tbody id="body"></tbody></table></div>
-  <p class="method">The NJ Lottery calls these <strong>Lucky Locations</strong>: stores where top-prize winning tickets were purchased. It does not give a sale date for every row. “Prizes remaining” is a claims snapshot, and some winning stores no longer sell Lottery products. A past win or a busy town does not show where an unclaimed winning ticket is located or change another ticket’s odds. Retailer searches are area based; the collected count is not a certified statewide registry. <a href="https://www.njlottery.com/en-us/scratch-offs.html" target="_blank" rel="noopener">Official games</a> · <a href="https://www.njlottery.com/en-us/playertools/retailer.html" target="_blank" rel="noopener">Official retailer finder</a>.</p>
+  <p class="method">Income is the area median household income from the 2020–2024 Census ACS (2024 dollars), with its margin of error. ZIPs are matched by store address; same-code Census ZCTAs approximate postal ZIP areas. Income brackets classify the area median, not the winner’s income. Historical reports appear separately because they can overlap game locations. Click any column heading to sort whole rows. The NJ Lottery calls these <strong>Lucky Locations</strong>: stores where top-prize winning tickets were purchased. It does not give a sale date for every row. “Prizes remaining” is a claims snapshot, and some winning stores no longer sell Lottery products. A past win or a busy town does not show where an unclaimed winning ticket is located or change another ticket’s odds. Retailer searches are area based; the collected count is not a certified statewide registry. <a href="https://www.njlottery.com/en-us/scratch-offs.html" target="_blank" rel="noopener">Official games</a> · <a href="https://www.njlottery.com/en-us/playertools/retailer.html" target="_blank" rel="noopener">Official retailer finder</a> · <a href="https://www.census.gov/programs-surveys/acs/data/summary-file.2024.html" target="_blank" rel="noopener">Census income source</a>.</p>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="./model.js"></script>
 <script src="./app.js"></script></body></html>
