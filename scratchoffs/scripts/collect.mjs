@@ -39,11 +39,20 @@ try {
     for (const href of entries) catalog.set(href.match(/(0\d{4})\.html$/)[1], { id: href.match(/(0\d{4})\.html$/)[1], status, url: new URL(href, catalogUrl).href });
     console.log(status, entries.length);
   }
+  // The search catalog retains older games absent from the main tabs.
+  try {
+    await page.goto('https://www.njlottery.com/en-us/scratch-offs/search.html', {waitUntil:'domcontentloaded',timeout:60000});
+    await page.locator('a[href*="/scratch-offs/0"]').first().waitFor({timeout:30000});
+    const older = await page.locator('a[href*="/scratch-offs/0"]').evaluateAll(links => [...new Set(links.map(a=>a.href))].filter(h=>/\/0\d{4}\.html$/.test(h)));
+    for (const url of older) { const id=url.match(/(0\d{4})\.html$/)[1]; if(!catalog.has(id)) catalog.set(id,{id,status:'expired',url,discovered_via:'official archive search'}); }
+    console.log('Catalog including older games',catalog.size);
+  } catch(error) { console.warn('Older catalog unavailable:',error.message); }
   const byId = new Map(games.entries.map(g => [g.id, g]));
   let scanned = 0;
-  for (const game of catalog.values()) {
+  for (const game of [...catalog.values()].sort((a,b)=>Number(!byId.has(b.id))-Number(!byId.has(a.id)))) {
     if (scanned >= maxGames) break;
     const old = byId.get(game.id);
+    if (process.env.SCRATCH_ARCHIVE_ONLY === '1' && old) continue;
     // The full active/ended catalog refreshes; expired games are historical and stable.
     if (game.status === 'expired' && old?.scanned_at) continue;
     scanned++;
