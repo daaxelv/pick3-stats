@@ -90,7 +90,7 @@
     const towns=[...new Set([...state.winners,...state.stores,...state.archive].map(r=>norm(r.town)).filter(Boolean))].sort();
     $('town').innerHTML='<option value="">All towns</option>'+towns.map(t=>'<option value="'+safe(t)+'">'+safe(t)+'</option>').join('');
     $('gameCount').textContent=fmt(state.games.length);$('winCount').textContent=fmt(state.winners.length);$('townCount').textContent=fmt(new Set(state.winners.map(r=>norm(r.town))).size);$('storeCount').textContent=fmt(state.stores.length);
-    $('state').textContent='Official-source snapshot: games '+(games.updated_at?.slice(0,10)||'pending')+'; retailer searches '+(retailers.updated_at?.slice(0,10)||'pending')+'. '+(retailers.search_areas?.length||0)+' search areas collected. Game locations have no individual date in the official table.';
+    $('state').textContent='Official-source snapshot: games '+(games.updated_at?.slice(0,10)||'pending')+'; retailer searches '+(retailers.updated_at?.slice(0,10)||'pending')+'. '+(retailers.search_areas?.length||0)+' search areas collected. '+state.games.filter(g=>g.pagination_complete===false).length+' games have incomplete winner pagination. Game locations have no individual date in the official table.';
     update();
   }).catch(err=>{$('state').textContent='Snapshot unavailable: '+err.message+'. See the official source links below.';});
 })();
