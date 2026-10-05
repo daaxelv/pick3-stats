@@ -1,18 +1,18 @@
 {
-  "checked_at": "2026-10-05T09:14:55.318987Z",
+  "checked_at": "2026-10-05T18:34:53.364215Z",
   "conflict_count": 0,
-  "csv_sha256": "e421c3cb96468b7643391360b29008d2a06b7786a217bd9d6c5135896a748018",
+  "csv_sha256": "7fee8d6d904ffb08754e0307a04c9744cfa2844902ee0ecd4b0031df79fac7eb",
   "expected_through": {
     "EVE": "2026-10-04",
-    "MID": "2026-10-04"
+    "MID": "2026-10-05"
   },
   "failed_sources": [],
   "newest_dates": {
     "M4L": "2026-10-04",
     "P3_EVE": "2026-10-04",
-    "P3_MID": "2026-10-04",
+    "P3_MID": "2026-10-05",
     "P4_EVE": "2026-10-04",
-    "P4_MID": "2026-10-04"
+    "P4_MID": "2026-10-05"
   },
   "ok": true,
   "partial_failure": false,
@@ -20,13 +20,13 @@
     "EVE": [],
     "MID": []
   },
-  "rows_added": 3,
-  "rows_after": 27416,
-  "rows_before": 27413,
+  "rows_added": 2,
+  "rows_after": 27418,
+  "rows_before": 27416,
   "schema_version": 1,
   "sources": {
     "M4L": {
-      "added": 1,
+      "added": 0,
       "attempts": 1,
       "conflicts": [],
       "newest_date": "2026-10-04",
@@ -35,7 +35,7 @@
       "url": "https://www.lotteryusa.com/new-jersey/millionaire-for-life/"
     },
     "P3_EVE": {
-      "added": 1,
+      "added": 0,
       "attempts": 1,
       "conflicts": [],
       "newest_date": "2026-10-04",
@@ -44,16 +44,16 @@
       "url": "https://www.lotteryusa.com/new-jersey/pick-3/year"
     },
     "P3_MID": {
-      "added": 0,
+      "added": 1,
       "attempts": 1,
       "conflicts": [],
-      "newest_date": "2026-10-04",
+      "newest_date": "2026-10-05",
       "ok": true,
       "records_seen": 50,
       "url": "https://www.lotteryusa.com/new-jersey/midday-pick-3/year"
     },
     "P4_EVE": {
-      "added": 1,
+      "added": 0,
       "attempts": 1,
       "conflicts": [],
       "newest_date": "2026-10-04",
@@ -62,10 +62,10 @@
       "url": "https://www.lotteryusa.com/new-jersey/pick-4/year"
     },
     "P4_MID": {
-      "added": 0,
+      "added": 1,
       "attempts": 1,
       "conflicts": [],
-      "newest_date": "2026-10-04",
+      "newest_date": "2026-10-05",
       "ok": true,
       "records_seen": 50,
       "url": "https://www.lotteryusa.com/new-jersey/midday-pick-4/year"
