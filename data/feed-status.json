@@ -1,17 +1,17 @@
 {
-  "checked_at": "2026-10-06T00:23:42.124774Z",
+  "checked_at": "2026-10-06T06:55:04.000595Z",
   "conflict_count": 0,
-  "csv_sha256": "7fee8d6d904ffb08754e0307a04c9744cfa2844902ee0ecd4b0031df79fac7eb",
+  "csv_sha256": "5293387c6f9af6b622915197bce7bfed44a4c642c7cab084273b910da0e0aa05",
   "expected_through": {
-    "EVE": "2026-10-04",
+    "EVE": "2026-10-05",
     "MID": "2026-10-05"
   },
   "failed_sources": [],
   "newest_dates": {
-    "M4L": "2026-10-04",
-    "P3_EVE": "2026-10-04",
+    "M4L": "2026-10-05",
+    "P3_EVE": "2026-10-05",
     "P3_MID": "2026-10-05",
-    "P4_EVE": "2026-10-04",
+    "P4_EVE": "2026-10-05",
     "P4_MID": "2026-10-05"
   },
   "ok": true,
@@ -20,25 +20,25 @@
     "EVE": [],
     "MID": []
   },
-  "rows_added": 0,
-  "rows_after": 27418,
+  "rows_added": 3,
+  "rows_after": 27421,
   "rows_before": 27418,
   "schema_version": 1,
   "sources": {
     "M4L": {
-      "added": 0,
+      "added": 1,
       "attempts": 1,
       "conflicts": [],
-      "newest_date": "2026-10-04",
+      "newest_date": "2026-10-05",
       "ok": true,
       "records_seen": 10,
       "url": "https://www.lotteryusa.com/new-jersey/millionaire-for-life/"
     },
     "P3_EVE": {
-      "added": 0,
+      "added": 1,
       "attempts": 1,
       "conflicts": [],
-      "newest_date": "2026-10-04",
+      "newest_date": "2026-10-05",
       "ok": true,
       "records_seen": 50,
       "url": "https://www.lotteryusa.com/new-jersey/pick-3/year"
@@ -53,10 +53,10 @@
       "url": "https://www.lotteryusa.com/new-jersey/midday-pick-3/year"
     },
     "P4_EVE": {
-      "added": 0,
+      "added": 1,
       "attempts": 1,
       "conflicts": [],
-      "newest_date": "2026-10-04",
+      "newest_date": "2026-10-05",
       "ok": true,
       "records_seen": 50,
       "url": "https://www.lotteryusa.com/new-jersey/pick-4/year"
