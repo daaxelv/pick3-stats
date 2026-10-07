@@ -24,6 +24,8 @@ jobs:
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -43,11 +45,34 @@ jobs:
         run: python3 scratchoffs/scripts/income.py
       - name: Commit updated snapshots
         if: always()
+        env:
+          SNAPSHOT_BRANCH: ${{ github.ref_name }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add scratchoffs/data
           if ! git diff --cached --quiet; then
             git commit -m "Update NJ scratch-off winner and retailer snapshot"
-            git push
+            # Other lottery collectors can advance this branch during collection.
+            # Rebase our snapshot onto their changes; never force-push or discard them.
+            for attempt in 1 2 3; do
+              git fetch origin "refs/heads/$SNAPSHOT_BRANCH"
+              remote_before=$(git rev-parse FETCH_HEAD)
+              if ! git rebase "$remote_before"; then
+                git rebase --abort
+                echo "::error::Snapshot conflicts with newer changes; refusing to overwrite them."
+                exit 1
+              fi
+              if git push origin "HEAD:refs/heads/$SNAPSHOT_BRANCH"; then
+                exit 0
+              fi
+              git fetch origin "refs/heads/$SNAPSHOT_BRANCH"
+              if [ "$(git rev-parse FETCH_HEAD)" = "$remote_before" ]; then
+                echo "::error::Push failed without a concurrent branch update; check permissions or network."
+                exit 1
+              fi
+              echo "Branch advanced during save; retrying ($attempt/3)."
+            done
+            echo "::error::Branch kept advancing during all three save attempts."
+            exit 1
           fi
