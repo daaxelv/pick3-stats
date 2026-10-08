@@ -64,6 +64,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -79,6 +80,8 @@ jobs:
         continue-on-error: true
         run: node quickdraw/scripts/collect_official.mjs --max-batches '${{ github.event_name == 'schedule' && '100' || inputs.batches }}'
       - name: Save verified batches
+        env:
+          SNAPSHOT_BRANCH: main
         run: |
           git config user.name "quickdraw-results-bot"
           git config user.email "actions@github.com"
@@ -87,17 +90,7 @@ jobs:
             echo "No new batches."
           else
             git commit -m "Backfill NJ Quick Draw results $(date -u +%F)"
-            # Another updater may advance main while this collector runs. Its
-            # next scheduled run will resume at the remaining gap on new main.
-            if ! git push origin HEAD:main; then
-              git fetch origin main
-              if git merge-base --is-ancestor HEAD^ origin/main; then
-                echo "::warning::Main advanced during collection; skip stale batches. The next run will retry from current coverage."
-              else
-                echo "Push failed without a newer main; investigate permissions or network."
-                exit 1
-              fi
-            fi
+            bash scripts/push_snapshot.sh
           fi
       - name: Report any collection failure
         if: steps.collector.outcome == 'failure'
