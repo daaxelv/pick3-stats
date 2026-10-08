@@ -1,0 +1,59 @@
+name: Update Powerball history
+on:
+  schedule:
+    # After each Mon/Wed/Sat ET draw, with a next-day publication retry.
+    - cron: '19 7,16 * * 0,2,4'
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - 'powerball/**'
+      - 'scripts/collect_powerball.py'
+      - 'scripts/test_powerball.py'
+      - '.github/workflows/powerball-update.yml'
+permissions:
+  contents: read
+concurrency:
+  group: powerball-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test powerball/*.test.mjs
+      - run: python -m unittest discover -s scripts -p 'test_powerball.py' -v
+  update:
+    needs: test
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Collect and validate official archive
+        run: python scripts/collect_powerball.py
+      - name: Save verified results
+        env:
+          SNAPSHOT_BRANCH: ${{ github.ref_name }}
+        run: |
+          git config user.name 'results-bot'
+          git config user.email 'actions@github.com'
+          git add powerball/data/history.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update verified Powerball history'
+            bash scripts/push_snapshot.sh
+          fi
