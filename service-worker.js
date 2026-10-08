@@ -3,7 +3,7 @@
 // and can be added to the home screen, while always fetching the live
 // results CSV from the network first (falling back to cache only if the
 // network is unavailable) so stats never go stale on purpose.
-const CACHE_VERSION = 'ghost-engine-v13-scratchoffs-income';
+const CACHE_VERSION = 'ghost-engine-v14-powerball';
 const APP_SHELL = [
   './',
   './index.html',
@@ -19,6 +19,9 @@ const APP_SHELL = [
   './m4l-research/app.js',
   './m4l-research/research-sample-60.csv',
   './m4l-research/supplied-holdout-30.csv',
+  './powerball/', './powerball/index.html', './powerball/style.css',
+  './powerball/app.mjs', './powerball/model.mjs', './powerball/research.mjs',
+  './powerball/worker.mjs', './powerball/backtest-worker.mjs',
   './scratchoffs/',
   './scratchoffs/index.html',
   './scratchoffs/app.js', './scratchoffs/model.js',
@@ -47,7 +50,7 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
-  const isFreshData = url.pathname.endsWith('/data/nj_numbers_canonical.csv') || url.pathname.endsWith('/data/feed-status.json') || url.pathname.endsWith('/quickdraw/data/coverage.json') || url.pathname.endsWith('/quickdraw/data/history.json') || url.pathname.includes('/scratchoffs/data/');
+  const isFreshData = url.pathname.endsWith('/data/nj_numbers_canonical.csv') || url.pathname.endsWith('/data/feed-status.json') || url.pathname.endsWith('/quickdraw/data/coverage.json') || url.pathname.endsWith('/quickdraw/data/history.json') || url.pathname.includes('/scratchoffs/data/') || url.pathname.includes('/powerball/data/');
 
   if (isFreshData) {
     // Network-first for results and Quick Draw snapshots: freshness matters more than speed.

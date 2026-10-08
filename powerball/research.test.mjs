@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {scoreModel,backtest} from './research.mjs';
+const rows=Array.from({length:65},(_,i)=>({date:'2026-10-07',nums:[1+i%10,20,30,40,69],pb:1+i%26}));
+test('Powerball models cover 69/26 with normalized weights',()=>{for(const name of ['origin','physical','uniform']){const weights=scoreModel(rows,'2026-10-10',name);assert.equal(weights.main.length,69);assert.equal(weights.mb.length,26);assert.ok(Math.abs(weights.main.reduce((a,b)=>a+b)-5)<1e-9);assert.ok(Math.abs(weights.mb.reduce((a,b)=>a+b)-1)<1e-9);assert.ok(weights.main.every(Number.isFinite));}});
+test('Walk-forward compares all three models on the same unseen dates',()=>{const result=backtest(rows);for(const r of Object.values(result)){assert.equal(r.tested,5);assert.ok(Number.isFinite(r.logMB));assert.ok(r.top5>=0&&r.top5<=5);}assert.equal(result.uniform.top5,1);});
