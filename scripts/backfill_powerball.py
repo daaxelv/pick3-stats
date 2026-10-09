@@ -58,7 +58,7 @@ def parse_month(text, year, month):
             raise ValueError('Malformed drawing numbers on ' + day.isoformat())
         # The old source uses 01* as a placeholder before Power Play existed.
         multiplier = int(values[6]) if len(values) == 7 and day.isoformat() >= '2001-03-07' else None
-        if multiplier is not None and multiplier not in [1,2,3,4,5]:
+        if multiplier is not None and multiplier not in [1,2,3,4,5,10]:
             raise ValueError('Invalid Power Play on ' + day.isoformat())
         raw.append({'draw_date':day.isoformat(), 'winning_numbers':' '.join(values[:6]), 'multiplier':multiplier})
     start = max(FIRST_DRAW, f'{year:04}-{month:02}-01')

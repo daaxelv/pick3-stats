@@ -2,6 +2,7 @@ import copy
 import json
 from pathlib import Path
 import unittest
+import datetime as dt
 from collect_powerball import FIRST_DRAW, normalize, limits
 from backfill_powerball import parse_month
 class PowerballTests(unittest.TestCase):
@@ -38,6 +39,14 @@ class PowerballTests(unittest.TestCase):
         text=self.april_html()
         for bad in [text.replace('4/29/1992','4/25/1992'), text.replace('4/29/1992','5/29/1992'), text.replace('<span>44</span>',''), text.replace('<span>44</span>','<span>46</span>'), '<html>Unavailable</html>']:
             with self.assertRaises(ValueError):parse_month(bad,1992,4)
+    def test_historical_ten_times_power_play(self):
+        # Official March 11, 2006 result used the promotional 10x multiplier.
+        days=[dt.date(2006,3,d) for d in range(1,32) if dt.date(2006,3,d).weekday() in [2,5]]
+        text='<table>'+''.join(f'<tr><td>{d.month}/{d.day}/{d.year}</td><td>16 35 37 52 54 33 {10 if d.day==11 else 2:02}*</td></tr>' for d in days)+'</table>'
+        rows=parse_month(text,2006,3)
+        self.assertEqual(next(r['multiplier'] for r in rows if r['draw_date']=='2006-03-11'),10)
+        with self.assertRaisesRegex(ValueError,'Invalid Power Play'):
+            parse_month(text.replace('10*','08*'),2006,3)
     def test_legacy_archive_complete_and_matches_counts(self):
         path=Path(__file__).resolve().parents[1]/'powerball/data/legacy-history.json'
         if not path.exists(): self.skipTest('One-time backfill is not yet available')
