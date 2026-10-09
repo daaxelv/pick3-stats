@@ -9,11 +9,21 @@ from zoneinfo import ZoneInfo
 
 URL = 'https://data.ny.gov/resource/d6yy-54nr.json'
 ROOT = Path(__file__).resolve().parents[1] / 'powerball' / 'data'
+FIRST_DRAW = '1992-04-22'
+LEGACY = ROOT / 'legacy-history.json'
 
 def limits(day):
-    return (69,26) if day >= '2015-10-07' else (59,35) if day >= '2012-01-18' else (59,39)
+    for start, white, red in [
+        ('2015-10-07',69,26), ('2012-01-18',59,35),
+        ('2009-01-07',59,39), ('2005-08-31',55,42),
+        ('2002-10-09',53,42), ('1997-11-05',49,42),
+        (FIRST_DRAW,45,45),
+    ]:
+        if day >= start:
+            return white, red
+    raise ValueError('Before the first Powerball drawing: ' + day)
 
-def normalize(raw):
+def normalize(raw, start='2010-02-03'):
     found = {}
     for row in raw:
         day = row['draw_date'][:10]
@@ -31,7 +41,7 @@ def normalize(raw):
     if not found:
         raise ValueError('Empty archive')
     rows = sorted(found.values(), key=lambda r:r['date'])
-    if rows[0]['date'] != '2010-02-03':
+    if rows[0]['date'] != start:
         raise ValueError('Archive start is incomplete')
     day, end = dt.date.fromisoformat(rows[0]['date']), dt.date.fromisoformat(rows[-1]['date'])
     while day <= end:
@@ -51,7 +61,13 @@ def request(url):
             time.sleep(2 ** attempt)
 
 def save(raw):
-    rows = normalize(raw)
+    # The frozen official legacy archive is validated on every update; only
+    # the modern feed needs repeated network collection.
+    legacy = json.loads(LEGACY.read_text()) if LEGACY.exists() else None
+    if legacy:
+        rows = normalize(legacy['raw'] + raw, start=FIRST_DRAW)
+    else:
+        rows = normalize(raw)
     today = dt.datetime.now(ZoneInfo('America/New_York')).date()
     if dt.date.fromisoformat(rows[-1]['date']) > today:
         raise ValueError('Source contains a future draw')
@@ -68,7 +84,12 @@ def save(raw):
         if any(r['date'] not in fresh for r in previous):
             raise ValueError('Source lost previously collected dates')
     current = [r for r in rows if r['date'] >= '2015-10-07']
-    payload = dict(source=URL, checked_at=dt.datetime.now(dt.timezone.utc).isoformat(), first_date=rows[0]['date'], last_date=rows[-1]['date'], total_draws=len(rows), current_format_draws=len(current), missing_scheduled_draws=0, archive_note='Official archive starts February 3, 2010; 1992–2009 not included.', draws=rows)
+    payload = dict(source=URL, checked_at=dt.datetime.now(dt.timezone.utc).isoformat(), first_date=rows[0]['date'], last_date=rows[-1]['date'], total_draws=len(rows), current_format_draws=len(current), missing_scheduled_draws=0, archive_note='Official Powerball history from the first drawing on April 22, 1992.' if legacy else 'Official archive starts February 3, 2010; 1992–2009 not included.', draws=rows)
+    if legacy:
+        payload['legacy_source'] = legacy['source']
+        payload['legacy_draws'] = len(legacy['raw'])
+        payload['legacy_checked_at'] = legacy['checked_at']
+        payload['overlap_verified_draws'] = legacy['overlap_verified_draws']
     ROOT.mkdir(parents=True,exist_ok=True)
     tmp = path.with_suffix('.tmp')
     tmp.write_text(json.dumps(payload,separators=(',',':'))+'\n')
