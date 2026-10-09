@@ -1,0 +1,55 @@
+name: Update official Jersey Cash 5 history
+on:
+  schedule:
+    - cron: '37 7,17 * * *'
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - 'jerseycash5/**'
+      - '.github/workflows/jerseycash5-update.yml'
+permissions:
+  contents: read
+concurrency:
+  group: jerseycash5-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test jerseycash5/*.test.mjs
+  update:
+    needs: test
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install collector browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - run: node jerseycash5/scripts/collect.mjs
+      - name: Save validated snapshot
+        env:
+          SNAPSHOT_BRANCH: ${{ github.ref_name }}
+        run: |
+          git config user.name 'results-bot'
+          git config user.email 'actions@github.com'
+          git add jerseycash5/data/history.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update verified Jersey Cash 5 history'
+            bash scripts/push_snapshot.sh
+          fi
