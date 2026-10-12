@@ -24,5 +24,7 @@ class ArchiveTests(unittest.TestCase):
             with self.assertRaises(ValueError):self.build([raw])
     def test_all_history_counts(self):
         rows,c=self.build([row(1),row(2,4),row(3)]);s=module.stats(rows);self.assertEqual(sum(r['hits'] for r in s['rows']),3);self.assertEqual(s['rows'][6]['hits'],2);self.assertEqual(s['rows'][6]['rank'],1)
+    def test_source_gap_is_not_claimed_complete(self):
+        rows,c=self.build([row(1),row(3)]);module.search_coverage(c,[dict(from_draw=1,to_draw=3)]);self.assertTrue(c['all_ranges_searched']);self.assertFalse(c['complete']);self.assertEqual(c['searched_missing_draws'],1);self.assertEqual(c['unsearched_draws'],0)
 
 if __name__=='__main__':unittest.main()

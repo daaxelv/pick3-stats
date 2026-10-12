@@ -52,6 +52,22 @@ def stats(draws):
         r['rank'] = rank
     return dict(count=len(draws), first_date=draws[0]['date_time'] if draws else None, last_date=draws[-1]['date_time'] if draws else None, rows=rows)
 
+def search_coverage(coverage, searches):
+    pending = [(g['from_draw'], g['to_draw']) for g in coverage['gaps']]
+    for s in searches:
+        a,b=s['from_draw'],s['to_draw']
+        if type(a) is not int or type(b) is not int or a<1 or b<a or b-a>=500:
+            raise ValueError('Invalid searched range')
+        next_ranges=[]
+        for x,y in pending:
+            if b<x or a>y:next_ranges.append((x,y))
+            else:
+                if x<a:next_ranges.append((x,a-1))
+                if y>b:next_ranges.append((b+1,y))
+        pending=next_ranges
+    unsearched=sum(b-a+1 for a,b in pending)
+    coverage.update(unsearched_draws=unsearched, searched_missing_draws=coverage['missing_draws']-unsearched, all_ranges_searched=coverage['last_draw']>0 and unsearched==0)
+
 def write_json(path, value):
     tmp = path.with_suffix(path.suffix+'.tmp')
     tmp.write_text(json.dumps(value, separators=(',', ':'), allow_nan=False)+'\n')
@@ -63,6 +79,8 @@ def main():
     args = parser.parse_args()
     files = sorted(args.data_dir.glob('official-sample-*.json'))
     rows, coverage = build(files)
+    log=args.data_dir/'searched-ranges.json'
+    search_coverage(coverage, json.loads(log.read_text()) if log.exists() else [])
     groups = dict(all=stats(rows), recent=stats(rows[-500:]))
     years = sorted({r['date_time'][:4] for r in rows})
     for year in years:

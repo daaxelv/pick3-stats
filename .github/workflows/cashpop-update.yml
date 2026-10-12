@@ -71,8 +71,8 @@ jobs:
           fi
           for (( CASHPOP_ROUND=1; CASHPOP_ROUND<=CASHPOP_ROUNDS; CASHPOP_ROUND++ )); do
             node cashpop/scripts/collect_official.mjs --max-batches "$CASHPOP_BATCHES" || exit 1
-            if python3 -c 'import json,sys; sys.exit(0 if json.load(open("cashpop/data/coverage.json"))["complete"] else 1)'; then
-              echo 'All historical gaps through collected latest endpoint are filled.'
+            if python3 -c 'import json,sys; sys.exit(0 if json.load(open("cashpop/data/coverage.json"))["all_ranges_searched"] else 1)'; then
+              echo 'All historical ranges searched. Check coverage for unavailable official results.'
               break
             fi
           done
