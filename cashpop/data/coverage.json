@@ -1,1 +1,1 @@
-{"first_draw":1,"last_draw":565196,"loaded_draws":3004,"missing_draws":562192,"gaps":[{"from_draw":2501,"to_draw":564692,"count":562192}],"complete":false,"percent":0.5314970381955993}
+{"first_draw":1,"last_draw":565196,"loaded_draws":4003,"missing_draws":561193,"gaps":[{"from_draw":2720,"to_draw":2720,"count":1},{"from_draw":3501,"to_draw":564692,"count":561192}],"complete":false,"percent":0.708249881457052,"unsearched_draws":561192,"searched_missing_draws":1,"all_ranges_searched":false}
