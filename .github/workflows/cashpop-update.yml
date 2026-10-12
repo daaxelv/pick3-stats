@@ -1,0 +1,74 @@
+name: Update NJ CASH POP history
+on:
+  workflow_dispatch:
+    inputs:
+      batches:
+        description: 'Verified 500-draw batches (1–200)'
+        default: '100'
+        required: true
+  schedule:
+    - cron: '43 9 * * *'
+  pull_request:
+    paths: ['cashpop/**', '.github/workflows/cashpop-update.yml']
+permissions:
+  contents: read
+concurrency:
+  group: cashpop-${{ github.event_name == 'pull_request' && github.ref || 'collector' }}
+  cancel-in-progress: false
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: node --test cashpop/model.test.mjs
+      - run: python3 cashpop/scripts/test_build_history.py
+      - run: python3 cashpop/scripts/build_history.py
+      - run: node cashpop/scripts/collect_official.mjs --plan --max-batches 100
+  collect:
+    needs: tests
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install official-site collector browser
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Collect recent draws and next historical gaps
+        id: collector
+        continue-on-error: true
+        run: node cashpop/scripts/collect_official.mjs --max-batches '${{ github.event_name == 'schedule' && '100' || inputs.batches }}'
+      - name: Validate and save verified data
+        if: always()
+        env:
+          SNAPSHOT_BRANCH: main
+        run: |
+          python3 cashpop/scripts/build_history.py
+          git config user.name 'cashpop-results-bot'
+          git config user.email 'actions@github.com'
+          git add cashpop/data/
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update verified NJ CASH POP history'
+            bash scripts/push_snapshot.sh
+          fi
+      - name: Report collection errors
+        if: steps.collector.outcome == 'failure'
+        run: exit 1
