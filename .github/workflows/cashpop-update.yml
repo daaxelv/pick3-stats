@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: node --test cashpop/model.test.mjs
+      - run: node --test cashpop/*.test.mjs
       - run: python3 cashpop/scripts/test_build_history.py
       - run: python3 cashpop/scripts/build_history.py
       - run: node cashpop/scripts/collect_official.mjs --plan --max-batches 100
@@ -38,7 +38,7 @@ jobs:
     needs: tests
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 60
     permissions:
       contents: write
     steps:
