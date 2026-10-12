@@ -9,6 +9,8 @@ Rebuild: `python3 cashpop/scripts/build_history.py`.
 Plan backfill without a browser: `node cashpop/scripts/collect_official.mjs --plan --max-batches 100`.
 Official collector requires Playwright and Chromium. Run it through the CASH POP workflow. Each response must contain the exact requested contiguous IDs (at most 500). Valid batches survive an interrupted run; the workflow saves them, reports the failure and resumes gaps next run. No simulated rows fill gaps. Scheduled collection uses a bounded budget to limit private GitHub Actions usage. Check account minutes before increasing cadence/budget.
 
+For the initial full archive, manually select 200 batches and 6 rounds (at most 600,000 draw IDs, bounded by a 50-minute workflow timeout). Rounds stop early once all gaps are filled. If interrupted, saved verified batches remain usable and the next run resumes the gaps. Daily updates use only one 100-batch round while backfill remains incomplete.
+
 Rules sources: https://www.njlottery.com/en-us/drawgames/cashpop.html and https://www.njlottery.com/content/dam/portal/pdfs/drawgames/cashpop/CASH-POP_Rules_effective_11.4.24.pdf
 Launch source: https://njs-cdn.lotteryservices.com/content/dam/portal/pdfs/news_release_archive/2019/NJL_09-30-19_Cash-Pop.pdf
 Interval change source: https://www.njlottery.com/en-us/newsandevents/newsinput/2022/press-releases/CP_IntervalChange_062122.html

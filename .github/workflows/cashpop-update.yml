@@ -6,6 +6,10 @@ on:
         description: 'Verified 500-draw batches (1–200)'
         default: '100'
         required: true
+      rounds:
+        description: 'Collection rounds (1–6); use 6 for full initial archive'
+        default: '1'
+        required: true
   schedule:
     - cron: '43 9 * * *'
   pull_request:
@@ -55,7 +59,23 @@ jobs:
       - name: Collect recent draws and next historical gaps
         id: collector
         continue-on-error: true
-        run: node cashpop/scripts/collect_official.mjs --max-batches '${{ github.event_name == 'schedule' && '100' || inputs.batches }}'
+        env:
+          CASHPOP_BATCHES: ${{ github.event_name == 'schedule' && '100' || inputs.batches }}
+          CASHPOP_ROUNDS: ${{ github.event_name == 'schedule' && '1' || inputs.rounds }}
+        run: |
+          if [[ ! "$CASHPOP_BATCHES" =~ ^[0-9]+$ ]] || (( CASHPOP_BATCHES < 1 || CASHPOP_BATCHES > 200 )); then
+            echo 'Invalid batch budget'; exit 1
+          fi
+          if [[ ! "$CASHPOP_ROUNDS" =~ ^[1-6]$ ]]; then
+            echo 'Invalid round budget'; exit 1
+          fi
+          for (( CASHPOP_ROUND=1; CASHPOP_ROUND<=CASHPOP_ROUNDS; CASHPOP_ROUND++ )); do
+            node cashpop/scripts/collect_official.mjs --max-batches "$CASHPOP_BATCHES" || exit 1
+            if python3 -c 'import json,sys; sys.exit(0 if json.load(open("cashpop/data/coverage.json"))["complete"] else 1)'; then
+              echo 'All historical gaps through collected latest endpoint are filled.'
+              break
+            fi
+          done
       - name: Validate and save verified data
         if: always()
         env:
