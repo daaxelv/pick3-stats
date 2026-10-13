@@ -1,5 +1,9 @@
 # NJ CASH POP history engine
 
+Research additions: select multiple numbers (14 selected initially) to compare last-hit gaps relative to the latest collected draw. The latest hit has gap 0. If any official results are missing in that interval, show known draws and unknown results separately; a missing draw may have hit the selected number. Draw history is loaded one year at a time and paginated 50 rows per page, with number filtering. All 15 numbers fit in the frequency list because 15 is the complete game number range.
+
+Crowd simulation: 1–1,000,000 fixed virtual agents, one number each, uniform or collected-frequency choice weights. A browser worker creates agents without blocking the page; saved seed/weights reproduce counts and the first 25 agent IDs per number. Draw samples use random mock winning numbers or replay up to the latest 50 official results; neither is real ticket-sales information. Winning agents are number matches, not paid prize tiers. Up to 5,000 samples persist in localStorage with JSON export. Draw/sample tables have separate pagination. Run `node --test cashpop/*.test.mjs` for all research tests.
+
 Private repository feature at `/cashpop/`. No public hosting is enabled by this change.
 
 Official first draw: #1, September 30, 2019, 05:15 Eastern, number 7. Initial verified seed: first 500 draws plus 500 recent draws. Coverage is partial until every draw ID from 1 through the collected latest endpoint is present; this does not imply real-time freshness. Summary statistics use ALL saved official batches, not just the most recent table. They include per-year and latest-500 windows, all 15 numbers, frequency share, last hit, stable ranks and reversible whole-row sorting. Year archives preserve all collected results and draw-level winners/payouts. Individual ticket prize tiers cannot be inferred from draw totals.
