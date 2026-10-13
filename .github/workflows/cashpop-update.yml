@@ -10,6 +10,10 @@ on:
         description: 'Collection rounds (1–6); use 6 for full initial archive'
         default: '1'
         required: true
+      rebuild_only:
+        description: 'Rebuild analysis from saved history without fetching new draws'
+        type: boolean
+        default: false
   schedule:
     - cron: '43 9 * * *'
   pull_request:
@@ -53,10 +57,12 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install official-site collector browser
+        if: inputs.rebuild_only != true
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
       - name: Collect recent draws and next historical gaps
+        if: inputs.rebuild_only != true
         id: collector
         continue-on-error: true
         env:

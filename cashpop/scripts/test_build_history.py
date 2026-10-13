@@ -26,5 +26,8 @@ class ArchiveTests(unittest.TestCase):
         rows,c=self.build([row(1),row(2,4),row(3)]);s=module.stats(rows);self.assertEqual(sum(r['hits'] for r in s['rows']),3);self.assertEqual(s['rows'][6]['hits'],2);self.assertEqual(s['rows'][6]['rank'],1)
     def test_source_gap_is_not_claimed_complete(self):
         rows,c=self.build([row(1),row(3)]);module.search_coverage(c,[dict(from_draw=1,to_draw=3)]);self.assertTrue(c['all_ranges_searched']);self.assertFalse(c['complete']);self.assertEqual(c['searched_missing_draws'],1);self.assertEqual(c['unsearched_draws'],0)
+    def test_time_bins_use_recorded_local_hour_and_schedule_era(self):
+        rows=[dict(draw_no=1,number=14,date_time='2022-06-26T23:45'),dict(draw_no=2,number=14,date_time='2022-06-27T00:02'),dict(draw_no=3,number=5,date_time='2022-06-27T12:02')]
+        bins=module.time_bins(rows);self.assertEqual(sum(sum(b['counts']) for b in bins),3);old=next(b for b in bins if b['era']=='15min');self.assertEqual(old['hour'],23);self.assertEqual(old['minute'],45);self.assertEqual(old['weekday'],6);self.assertEqual(old['counts'][13],1);new=next(b for b in bins if b['hour']==0);self.assertEqual(new['era'],'4min');self.assertEqual(new['minute'],2);self.assertEqual(new['weekday'],0)
 
 if __name__=='__main__':unittest.main()
