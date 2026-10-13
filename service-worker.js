@@ -26,6 +26,7 @@ const APP_SHELL = [
   './cashpop/', './cashpop/index.html', './cashpop/style.css', './cashpop/app.mjs?v=cashpop-1', './cashpop/model.mjs',
   './cashpop/research-ui.mjs?v=crowd-1', './cashpop/research.mjs', './cashpop/crowd-worker.mjs',
   './cashpop/time-style.css', './cashpop/time-ui.mjs?v=time-1', './cashpop/time-model.mjs',
+  './cashpop/exact-time-ui.mjs?v=time-1',
   './jerseycash5/app.mjs?v=backtest-1', './jerseycash5/model.mjs', './jerseycash5/data.mjs', './jerseycash5/worker.mjs', './jerseycash5/backtest.mjs', './jerseycash5/backtest-worker.mjs',
   './scratchoffs/',
   './scratchoffs/index.html',

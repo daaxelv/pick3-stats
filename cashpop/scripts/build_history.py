@@ -78,10 +78,10 @@ def time_bins(rows):
     for row in rows:
         stamp = datetime.strptime(row['date_time'], '%Y-%m-%dT%H:%M')
         era = '15min' if stamp.date().isoformat() < '2022-06-27' else '4min'
-        key = (stamp.year, era, stamp.weekday(), stamp.hour)
+        key = (stamp.year, era, stamp.weekday(), stamp.hour, stamp.minute)
         counts = bins.setdefault(key, [0]*15)
         counts[row['number']-1] += 1
-    return [dict(year=key[0], era=key[1], weekday=key[2], hour=key[3], counts=counts) for key,counts in sorted(bins.items())]
+    return [dict(year=key[0], era=key[1], weekday=key[2], hour=key[3], minute=key[4], counts=counts) for key,counts in sorted(bins.items())]
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -99,6 +99,8 @@ def main():
         write_json(args.data_dir / f'history-{year}.json', subset)
     write_json(args.data_dir/'coverage.json', coverage)
     write_json(args.data_dir/'time-analysis.json', dict(schema=1, timezone='America/New_York', source='NJ Lottery official draw timestamps', coverage=coverage, first_date=rows[0]['date_time'] if rows else None, last_date=rows[-1]['date_time'] if rows else None, bins=time_bins(rows)))
+    for number in range(1,16):
+        write_json(args.data_dir/f'time-number-{number}.json', dict(schema=1, number=number, timezone='America/New_York', coverage=coverage, hits=[[r['draw_no'],r['date_time']] for r in rows if r['number']==number]))
     write_json(args.data_dir/'summary.json', dict(schema=1, coverage=coverage, groups=groups, recent=list(reversed(rows[-50:])), history_files=[f'history-{year}.json' for year in years]))
     print(json.dumps({k:v for k,v in coverage.items() if k!='gaps'}))
 
