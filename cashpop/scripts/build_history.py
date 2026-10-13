@@ -73,6 +73,16 @@ def write_json(path, value):
     tmp.write_text(json.dumps(value, separators=(',', ':'), allow_nan=False)+'\n')
     tmp.replace(path)
 
+def time_bins(rows):
+    bins = {}
+    for row in rows:
+        stamp = datetime.strptime(row['date_time'], '%Y-%m-%dT%H:%M')
+        era = '15min' if stamp.date().isoformat() < '2022-06-27' else '4min'
+        key = (stamp.year, era, stamp.weekday(), stamp.hour)
+        counts = bins.setdefault(key, [0]*15)
+        counts[row['number']-1] += 1
+    return [dict(year=key[0], era=key[1], weekday=key[2], hour=key[3], counts=counts) for key,counts in sorted(bins.items())]
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--data-dir', type=Path, default=Path('cashpop/data'))
@@ -88,6 +98,7 @@ def main():
         groups[year] = stats(subset)
         write_json(args.data_dir / f'history-{year}.json', subset)
     write_json(args.data_dir/'coverage.json', coverage)
+    write_json(args.data_dir/'time-analysis.json', dict(schema=1, timezone='America/New_York', source='NJ Lottery official draw timestamps', coverage=coverage, first_date=rows[0]['date_time'] if rows else None, last_date=rows[-1]['date_time'] if rows else None, bins=time_bins(rows)))
     write_json(args.data_dir/'summary.json', dict(schema=1, coverage=coverage, groups=groups, recent=list(reversed(rows[-50:])), history_files=[f'history-{year}.json' for year in years]))
     print(json.dumps({k:v for k,v in coverage.items() if k!='gaps'}))
 
