@@ -3,7 +3,7 @@
 // and can be added to the home screen, while always fetching the live
 // results CSV from the network first (falling back to cache only if the
 // network is unavailable) so stats never go stale on purpose.
-const CACHE_VERSION = 'ghost-engine-v22-cashpop-reverse';
+const CACHE_VERSION = 'ghost-engine-v23-cashpop-narrow';
 const APP_SHELL = [
   './',
   './index.html',
@@ -26,7 +26,7 @@ const APP_SHELL = [
   './cashpop/', './cashpop/index.html', './cashpop/style.css', './cashpop/app.mjs?v=cashpop-1', './cashpop/model.mjs',
   './cashpop/research-ui.mjs?v=crowd-1', './cashpop/research.mjs', './cashpop/crowd-worker.mjs',
   './cashpop/time-style.css', './cashpop/time-ui.mjs?v=time-1', './cashpop/time-model.mjs',
-  './cashpop/exact-time-ui.mjs?v=time-2', './cashpop/pattern-model.mjs', './cashpop/reverse-ui.mjs?v=reverse-1', './cashpop/reverse-model.mjs',
+  './cashpop/exact-time-ui.mjs?v=time-2', './cashpop/pattern-model.mjs', './cashpop/reverse-ui.mjs?v=reverse-1', './cashpop/reverse-model.mjs', './cashpop/narrow-ui.mjs?v=narrow-1', './cashpop/narrow-model.mjs',
   './jerseycash5/app.mjs?v=backtest-1', './jerseycash5/model.mjs', './jerseycash5/data.mjs', './jerseycash5/worker.mjs', './jerseycash5/backtest.mjs', './jerseycash5/backtest-worker.mjs',
   './scratchoffs/',
   './scratchoffs/index.html',
