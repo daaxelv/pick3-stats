@@ -1,4 +1,4 @@
-import {prepareStep,evaluateStep,VERSION} from './simulation.mjs';
+import {prepareStep,evaluateStep,VERSION} from './simulation.mjs?v=studies-2';
 let stopped=false,ack=null;
 self.onmessage=async({data})=>{
  if(data.type==='ack'){const next=ack;ack=null;next?.();return;}
