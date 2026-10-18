@@ -1,6 +1,6 @@
 # Pattern Lab studies
 
-`simulate.html` adds three study modes shared by Powerball, NY Take 5 and Millionaire for Life:
+`simulate.html` adds three study modes shared by Powerball, NJ Jersey Cash 5 and Millionaire for Life:
 
 - Saved-set mock simulation freezes selected local playbook tickets.
 - Pattern comparison freezes seeded portfolios; all groups face the same mock draws with the same number of unique ticket entries per drawing. Small pattern spaces reduce the budget of every group explicitly.
@@ -22,3 +22,9 @@ Runs and saved plays remain on the user's device. Prize rules are frozen in each
 ## Checks
 
 `node --test patterns/*.test.mjs` covers all prize tiers, losses, cash/unknown/free-play accounting, equal budgets, seeded draw independence, past-only training, invalid settings, worker checkpoint ordering, pause/resume equivalence and acknowledgement gating. `python -m unittest discover -s patterns -p 'test_*.py' -v` covers Take 5 collection. The existing workflow runs the suite and syntax-checks every Pattern Lab module. Live verification should include a reload during a mock study, resumed completion, sorted reports, a historical backtest, saved-set selection and CSV/JSON export.
+
+## New Jersey correction
+
+The visible five-number game is NJ Jersey Cash 5 (1–45), with its existing regular-draw archive from June 29, 2020. Earlier pool eras and promotional drawings are not included. Bullseye is one of the five drawn numbers; no bonus is selected on a ticket. Pre-July-2024 drawings use separate legacy 4/5 and 3/5 categories, with cash unavailable unless supplied as a scenario. Current $2 cost applies to all economic comparisons; historical prices are not reconstructed. Entire-collected-history mode reserves the first 20 rows for training and evaluates every later collected drawing, rather than imposing the 2,000-draw mock-run limit. Existing NY Take 5 saved sets and run records retain their NY identity and are never converted to NJ plays. Old Take 5 navigation links redirect to Jersey Cash 5, but historical journals stay labeled with their original game.
+
+The unintended NY Take 5 scheduled collector has been disabled. The existing Jersey Cash 5 update workflow remains the source of fresh NJ results. NY archive files and legacy run identities are preserved.
