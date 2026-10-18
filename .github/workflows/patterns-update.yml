@@ -25,7 +25,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: node --test patterns/*.test.mjs
-      - run: node --check patterns/app.mjs
+      - run: |
+          for file in patterns/*.mjs; do node --check "$file"; done
       - run: python -m unittest discover -s patterns -p 'test_*.py' -v
   update:
     needs: test
