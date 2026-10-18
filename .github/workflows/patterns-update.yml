@@ -1,0 +1,56 @@
+name: Pattern Lab checks and Take 5 history
+on:
+  schedule:
+    - cron: '45 4,20 * * *'
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - 'patterns/**'
+      - '.github/workflows/patterns-update.yml'
+permissions:
+  contents: read
+concurrency:
+  group: patterns-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: node --test patterns/*.test.mjs
+      - run: node --check patterns/app.mjs
+      - run: python -m unittest discover -s patterns -p 'test_*.py' -v
+  update:
+    needs: test
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python patterns/collect_take5.py
+      - name: Save verified Take 5 history
+        env:
+          SNAPSHOT_BRANCH: ${{ github.ref_name }}
+        run: |
+          git config user.name 'results-bot'
+          git config user.email 'actions@github.com'
+          git add patterns/data/take5.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update verified NY Take 5 history'
+            bash scripts/push_snapshot.sh
+          fi
