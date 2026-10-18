@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-18T06:03:26.752553Z",
+  "checked_at": "2026-10-18T11:22:34.391641Z",
   "conflict_count": 0,
   "csv_sha256": "0c52bad269261ed82e24fd128318ae50fa7bdf3ab83a6f98af9223cf3fcb7d7e",
   "expected_through": {
@@ -20,13 +20,13 @@
     "EVE": [],
     "MID": []
   },
-  "rows_added": 3,
+  "rows_added": 0,
   "rows_after": 27481,
-  "rows_before": 27478,
+  "rows_before": 27481,
   "schema_version": 1,
   "sources": {
     "M4L": {
-      "added": 1,
+      "added": 0,
       "attempts": 1,
       "conflicts": [],
       "newest_date": "2026-10-17",
@@ -35,7 +35,7 @@
       "url": "https://www.lotteryusa.com/new-jersey/millionaire-for-life/"
     },
     "P3_EVE": {
-      "added": 1,
+      "added": 0,
       "attempts": 1,
       "conflicts": [],
       "newest_date": "2026-10-17",
@@ -53,7 +53,7 @@
       "url": "https://www.lotteryusa.com/new-jersey/midday-pick-3/year"
     },
     "P4_EVE": {
-      "added": 1,
+      "added": 0,
       "attempts": 1,
       "conflicts": [],
       "newest_date": "2026-10-17",
