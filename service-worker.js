@@ -3,9 +3,9 @@
 // and can be added to the home screen, while always fetching the live
 // results CSV from the network first (falling back to cache only if the
 // network is unavailable) so stats never go stale on purpose.
-const CACHE_VERSION = 'ghost-engine-v28-nj-entire-history';
+const CACHE_VERSION = 'ghost-engine-v29-results';
 const APP_SHELL = [
-  './patterns/simulate.html', './patterns/simulation-ui.mjs?v=nj-1', './patterns/simulation.css', './patterns/simulation.mjs?v=nj-1', './patterns/simulation-worker.mjs?v=nj-1', './patterns/journal.mjs', './patterns/history.mjs?v=nj-1',
+  './patterns/simulate.html', './patterns/simulation-ui.mjs?v=results-1', './patterns/simulation.css', './patterns/simulation.mjs?v=nj-1', './patterns/simulation-worker.mjs?v=nj-1', './patterns/journal.mjs', './patterns/history.mjs?v=nj-1',
   './patterns/', './patterns/index.html', './patterns/app.mjs?v=nj-1', './patterns/model.mjs?v=nj-1', './patterns/style.css',
   './',
   './index.html',
