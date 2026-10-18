@@ -17,7 +17,7 @@ Official prize references (checked October 18, 2026):
 
 IndexedDB database `lottery-pattern-runs-v1` owns `runs` and `steps` stores. A worker sends a prepared drawing and exact ticket portfolios; the UI commits them before acknowledging permission to score. It then commits scored results and run progress in one transaction before acknowledging permission to advance. A prepared checkpoint can be scored again deterministically after interruption. Scored checkpoints are never scored twice on resume. The original config, archive snapshot for backtests, training cutoff, seed, portfolios, all drawing numbers and all winning tickets are retained. Browser Web Locks prevent simultaneous writers across tabs. Storage errors stop the worker; no archive is silently pruned. Journal version mismatches refuse resume.
 
-Runs and saved plays remain on the user's device. Export JSON for the complete self-contained journal, or CSV for comparisons and winning tickets. Existing engine journals and playbook keys are not altered. Closing the page releases the run lock; reopen and choose Resume. Run labels distinguish current execution from a recoverable checkpoint.
+Runs and saved plays remain on the user's device. Prize rules are frozen in each run. Export compact JSON for the complete self-contained journal (fixed portfolios are stored once in `run.groups` and referenced by each drawing; backtest portfolios remain attached to their drawing), or CSV for comparisons and winning tickets. Existing engine journals and playbook keys are not altered. Closing the page releases the run lock; reopen and choose Resume. Run labels distinguish current execution from a recoverable checkpoint.
 
 ## Checks
 
