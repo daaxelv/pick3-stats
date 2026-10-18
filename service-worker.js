@@ -3,7 +3,7 @@
 // and can be added to the home screen, while always fetching the live
 // results CSV from the network first (falling back to cache only if the
 // network is unavailable) so stats never go stale on purpose.
-const CACHE_VERSION = 'ghost-engine-v24-pattern-lab';
+const CACHE_VERSION = 'ghost-engine-v25-fresh-pattern-shell';
 const APP_SHELL = [
   './patterns/', './patterns/index.html', './patterns/app.mjs', './patterns/model.mjs', './patterns/style.css',
   './',
@@ -40,7 +40,7 @@ const APP_SHELL = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting())
+    caches.open(CACHE_VERSION).then((cache) => cache.addAll(APP_SHELL.map(path => new Request(new URL(path, self.location.href), {cache: 'reload'})))).then(() => self.skipWaiting())
   );
 });
 
@@ -84,7 +84,7 @@ self.addEventListener('fetch', (event) => {
   // works offline, refreshed in the background on every visit.
   event.respondWith(
     caches.match(req).then((cached) => {
-      const network = fetch(req)
+      const network = fetch(req, {cache: 'no-cache'})
         .then((res) => {
           if (res && res.status === 200) {
             const copy = res.clone();
