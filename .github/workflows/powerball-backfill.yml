@@ -1,0 +1,69 @@
+name: Backfill Powerball official history to 1992
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - '.github/workflows/powerball-backfill.yml'
+      - 'scripts/backfill_powerball.py'
+permissions:
+  contents: read
+concurrency:
+  group: powerball-legacy-backfill-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate parser before requesting archives
+        run: python -m unittest discover -s scripts -p 'test_powerball.py' -v
+      - name: Restore previously verified monthly pages
+        uses: actions/cache/restore@v4
+        with:
+          path: .backfill-cache
+          key: powerball-legacy-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: powerball-legacy-v1-
+      - name: Collect and cross-check complete official archive
+        run: python scripts/backfill_powerball.py --cache .backfill-cache
+      - name: Validate completed archive
+        run: python -m unittest discover -s scripts -p 'test_powerball.py' -v
+      - name: Save progress even if a source request fails
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .backfill-cache
+          key: powerball-legacy-v1-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Retain raw source pages for review and recovery
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: powerball-source-pages-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .backfill-cache/*.html
+          retention-days: 90
+          if-no-files-found: warn
+      - name: Retain validated archive for publishing review
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: powerball-verified-archive
+          path: |
+            powerball/data/legacy-history.json
+            powerball/data/history.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Record coverage in the run summary
+        if: success()
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          d=json.loads(Path('powerball/data/history.json').read_text())
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary:
+              summary.write(f"Verified {d['total_draws']:,} drawings: {d['first_date']} through {d['last_date']}.\n\n")
+              summary.write(f"Missing scheduled draws: {d['missing_scheduled_draws']}; official-source overlap: {d['overlap_verified_draws']} draws.\n\n")
+              summary.write('Archive is retained as an artifact. This workflow does not publish or modify main.\n')
+          PY
