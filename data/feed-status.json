@@ -1,18 +1,18 @@
 {
-  "checked_at": "2026-10-24T14:39:41.646810Z",
+  "checked_at": "2026-10-24T17:39:48.151281Z",
   "conflict_count": 0,
-  "csv_sha256": "1188b03cc1415a932d93ada6dca7432a33b6998686bfe6ed4eadf0b18ec614fd",
+  "csv_sha256": "f4c5fbc4ab213880e0bee35756e4216a9610827107d0036a9c5a0b8ddb5e075a",
   "expected_through": {
     "EVE": "2026-10-23",
-    "MID": "2026-10-23"
+    "MID": "2026-10-24"
   },
   "failed_sources": [],
   "newest_dates": {
     "M4L": "2026-10-23",
     "P3_EVE": "2026-10-23",
-    "P3_MID": "2026-10-23",
+    "P3_MID": "2026-10-24",
     "P4_EVE": "2026-10-23",
-    "P4_MID": "2026-10-23"
+    "P4_MID": "2026-10-24"
   },
   "ok": true,
   "partial_failure": false,
@@ -20,8 +20,8 @@
     "EVE": [],
     "MID": []
   },
-  "rows_added": 0,
-  "rows_after": 27511,
+  "rows_added": 2,
+  "rows_after": 27513,
   "rows_before": 27511,
   "schema_version": 1,
   "sources": {
@@ -44,10 +44,10 @@
       "url": "https://www.lotteryusa.com/new-jersey/pick-3/year"
     },
     "P3_MID": {
-      "added": 0,
+      "added": 1,
       "attempts": 1,
       "conflicts": [],
-      "newest_date": "2026-10-23",
+      "newest_date": "2026-10-24",
       "ok": true,
       "records_seen": 50,
       "url": "https://www.lotteryusa.com/new-jersey/midday-pick-3/year"
@@ -62,10 +62,10 @@
       "url": "https://www.lotteryusa.com/new-jersey/pick-4/year"
     },
     "P4_MID": {
-      "added": 0,
+      "added": 1,
       "attempts": 1,
       "conflicts": [],
-      "newest_date": "2026-10-23",
+      "newest_date": "2026-10-24",
       "ok": true,
       "records_seen": 50,
       "url": "https://www.lotteryusa.com/new-jersey/midday-pick-4/year"
