@@ -1,74 +1,73 @@
 {
-  "checked_at": "2026-11-03T17:56:19.316735Z",
+  "checked_at": "2026-11-03T23:30:02.736599Z",
   "conflict_count": 0,
-  "csv_sha256": "f9206444b4a1e4fcc703f9887dfcc2cef624b09ec1536ab6f17f221423227f6c",
+  "csv_sha256": "7c8e8f55767e1dc2f1cd9bf3815a1c1883d7807842a8ea2f40ad9b6075d37580",
   "expected_through": {
     "EVE": "2026-11-02",
-    "MID": "2026-11-02"
+    "MID": "2026-11-03"
   },
-  "failed_sources": [
-    "P3_MID",
-    "P3_EVE",
-    "P4_MID",
-    "P4_EVE",
-    "M4L"
-  ],
+  "failed_sources": [],
   "newest_dates": {
     "M4L": "2026-11-02",
     "P3_EVE": "2026-11-02",
-    "P3_MID": "2026-11-02",
+    "P3_MID": "2026-11-03",
     "P4_EVE": "2026-11-02",
-    "P4_MID": "2026-11-02"
+    "P4_MID": "2026-11-03"
   },
-  "ok": false,
-  "partial_failure": true,
+  "ok": true,
+  "partial_failure": false,
   "recent_missing": {
     "EVE": [],
     "MID": []
   },
-  "rows_added": 0,
-  "rows_after": 27561,
+  "rows_added": 2,
+  "rows_after": 27563,
   "rows_before": 27561,
   "schema_version": 1,
   "sources": {
     "M4L": {
       "added": 0,
+      "attempts": 1,
       "conflicts": [],
-      "error": "fetch failed after 1 attempt(s): HTTP Error 403: Forbidden",
-      "ok": false,
-      "records_seen": 0,
+      "newest_date": "2026-11-02",
+      "ok": true,
+      "records_seen": 10,
       "url": "https://www.lotteryusa.com/new-jersey/millionaire-for-life/"
     },
     "P3_EVE": {
       "added": 0,
+      "attempts": 1,
       "conflicts": [],
-      "error": "fetch failed after 1 attempt(s): HTTP Error 403: Forbidden",
-      "ok": false,
-      "records_seen": 0,
+      "newest_date": "2026-11-02",
+      "ok": true,
+      "records_seen": 50,
       "url": "https://www.lotteryusa.com/new-jersey/pick-3/year"
     },
     "P3_MID": {
-      "added": 0,
+      "added": 1,
+      "attempts": 1,
       "conflicts": [],
-      "error": "fetch failed after 1 attempt(s): HTTP Error 403: Forbidden",
-      "ok": false,
-      "records_seen": 0,
+      "newest_date": "2026-11-03",
+      "ok": true,
+      "records_seen": 50,
       "url": "https://www.lotteryusa.com/new-jersey/midday-pick-3/year"
     },
     "P4_EVE": {
       "added": 0,
+      "attempts": 1,
       "conflicts": [],
-      "error": "fetch failed after 1 attempt(s): HTTP Error 403: Forbidden",
-      "ok": false,
-      "records_seen": 0,
+      "newest_date": "2026-11-02",
+      "ok": true,
+      "records_seen": 50,
       "url": "https://www.lotteryusa.com/new-jersey/pick-4/year"
     },
     "P4_MID": {
-      "added": 0,
+      "added": 1,
+      "attempts": 1,
       "conflicts": [],
-      "error": "fetch failed after 1 attempt(s): HTTP Error 403: Forbidden",
-      "ok": false,
-      "records_seen": 0,
+      "newest_date": "2026-11-03",
+      "ok": true,
+      "records_seen": 50,
       "url": "https://www.lotteryusa.com/new-jersey/midday-pick-4/year"
     }
   }
