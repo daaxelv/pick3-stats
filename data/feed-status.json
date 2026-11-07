@@ -1,12 +1,14 @@
 {
-  "checked_at": "2026-11-06T21:38:34.729571Z",
+  "checked_at": "2026-11-07T01:18:54.750862Z",
   "conflict_count": 0,
   "csv_sha256": "8fd8c9831ebd4c53fb4bacc0e8b7ec1e3da0a4c65cea6ee5d915ea642e28f54c",
   "expected_through": {
     "EVE": "2026-11-05",
     "MID": "2026-11-06"
   },
-  "failed_sources": [],
+  "failed_sources": [
+    "P3_EVE"
+  ],
   "newest_dates": {
     "M4L": "2026-11-05",
     "P3_EVE": "2026-11-05",
@@ -14,15 +16,15 @@
     "P4_EVE": "2026-11-05",
     "P4_MID": "2026-11-06"
   },
-  "ok": true,
-  "partial_failure": false,
+  "ok": false,
+  "partial_failure": true,
   "recent_missing": {
     "EVE": [],
     "MID": []
   },
-  "rows_added": 2,
+  "rows_added": 0,
   "rows_after": 27578,
-  "rows_before": 27576,
+  "rows_before": 27578,
   "schema_version": 1,
   "sources": {
     "M4L": {
@@ -36,15 +38,14 @@
     },
     "P3_EVE": {
       "added": 0,
-      "attempts": 1,
       "conflicts": [],
-      "newest_date": "2026-11-05",
-      "ok": true,
-      "records_seen": 50,
+      "error": "malformed Pick 3 digits on 2026-11-05",
+      "ok": false,
+      "records_seen": 0,
       "url": "https://www.lotteryusa.com/new-jersey/pick-3/year"
     },
     "P3_MID": {
-      "added": 1,
+      "added": 0,
       "attempts": 1,
       "conflicts": [],
       "newest_date": "2026-11-06",
@@ -62,7 +63,7 @@
       "url": "https://www.lotteryusa.com/new-jersey/pick-4/year"
     },
     "P4_MID": {
-      "added": 1,
+      "added": 0,
       "attempts": 1,
       "conflicts": [],
       "newest_date": "2026-11-06",
