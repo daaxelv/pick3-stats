@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-08T19:47:53.638175Z",
+  "checked_at": "2026-11-08T23:12:21.839895Z",
   "conflict_count": 0,
   "csv_sha256": "6fd9d7d8609a9eb3fc7b87f28dc731ec148c4c535bbeeebd84219cdec5488b4c",
   "expected_through": {
@@ -25,9 +25,9 @@
     ],
     "MID": []
   },
-  "rows_added": 2,
+  "rows_added": 0,
   "rows_after": 27586,
-  "rows_before": 27584,
+  "rows_before": 27586,
   "schema_version": 1,
   "sources": {
     "M4L": {
@@ -48,7 +48,7 @@
       "url": "https://www.lotteryusa.com/new-jersey/pick-3/year"
     },
     "P3_MID": {
-      "added": 1,
+      "added": 0,
       "attempts": 1,
       "conflicts": [],
       "newest_date": "2026-11-08",
@@ -66,7 +66,7 @@
       "url": "https://www.lotteryusa.com/new-jersey/pick-4/year"
     },
     "P4_MID": {
-      "added": 1,
+      "added": 0,
       "attempts": 1,
       "conflicts": [],
       "newest_date": "2026-11-08",
