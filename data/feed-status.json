@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-08T08:03:01.004308Z",
+  "checked_at": "2026-11-08T15:22:18.729692Z",
   "conflict_count": 0,
   "csv_sha256": "82326899d30a19c0ac7fcf82e5c782c23c75ce4defd1efa0ee008f32b19fb1cc",
   "expected_through": {
@@ -25,13 +25,13 @@
     ],
     "MID": []
   },
-  "rows_added": 2,
+  "rows_added": 0,
   "rows_after": 27584,
-  "rows_before": 27582,
+  "rows_before": 27584,
   "schema_version": 1,
   "sources": {
     "M4L": {
-      "added": 1,
+      "added": 0,
       "attempts": 1,
       "conflicts": [],
       "newest_date": "2026-11-07",
@@ -57,7 +57,7 @@
       "url": "https://www.lotteryusa.com/new-jersey/midday-pick-3/year"
     },
     "P4_EVE": {
-      "added": 1,
+      "added": 0,
       "attempts": 1,
       "conflicts": [],
       "newest_date": "2026-11-07",
