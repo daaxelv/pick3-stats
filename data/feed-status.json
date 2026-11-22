@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-22T07:05:50.279860Z",
+  "checked_at": "2026-11-22T15:28:14.418384Z",
   "conflict_count": 0,
   "csv_sha256": "31724a52835e768bcc9b1cd9c1ca252605bcd15ad1d8d098f2cc51f7149302a4",
   "expected_through": {
@@ -39,13 +39,13 @@
     ],
     "MID": []
   },
-  "rows_added": 2,
+  "rows_added": 0,
   "rows_after": 27640,
-  "rows_before": 27638,
+  "rows_before": 27640,
   "schema_version": 1,
   "sources": {
     "M4L": {
-      "added": 1,
+      "added": 0,
       "attempts": 1,
       "conflicts": [],
       "newest_date": "2026-11-21",
@@ -56,7 +56,7 @@
     "P3_EVE": {
       "added": 0,
       "conflicts": [],
-      "error": "malformed Pick 3 digits on 2026-11-20",
+      "error": "malformed Pick 3 digits on 2026-11-21",
       "ok": false,
       "records_seen": 0,
       "url": "https://www.lotteryusa.com/new-jersey/pick-3/year"
@@ -71,7 +71,7 @@
       "url": "https://www.lotteryusa.com/new-jersey/midday-pick-3/year"
     },
     "P4_EVE": {
-      "added": 1,
+      "added": 0,
       "attempts": 1,
       "conflicts": [],
       "newest_date": "2026-11-21",
