@@ -1,19 +1,19 @@
 {
-  "checked_at": "2026-11-23T21:46:21.163249Z",
+  "checked_at": "2026-11-24T05:36:42.034010Z",
   "conflict_count": 0,
-  "csv_sha256": "8a11c4dbb0d7ffa39dbc87f96a9be31f5204dab50485c2aa34a2cb68fb7821dd",
+  "csv_sha256": "20d87b1f627b17cb20e1c71e87633cb861ab2a1c3fddb30e4f67d727b3d2ff71",
   "expected_through": {
-    "EVE": "2026-11-22",
+    "EVE": "2026-11-23",
     "MID": "2026-11-23"
   },
   "failed_sources": [
     "P3_EVE"
   ],
   "newest_dates": {
-    "M4L": "2026-11-22",
+    "M4L": "2026-11-23",
     "P3_EVE": "2026-11-05",
     "P3_MID": "2026-11-23",
-    "P4_EVE": "2026-11-22",
+    "P4_EVE": "2026-11-23",
     "P4_MID": "2026-11-23"
   },
   "ok": false,
@@ -36,20 +36,21 @@
       "2026-11-19",
       "2026-11-20",
       "2026-11-21",
-      "2026-11-22"
+      "2026-11-22",
+      "2026-11-23"
     ],
     "MID": []
   },
   "rows_added": 2,
-  "rows_after": 27646,
-  "rows_before": 27644,
+  "rows_after": 27648,
+  "rows_before": 27646,
   "schema_version": 1,
   "sources": {
     "M4L": {
-      "added": 0,
+      "added": 1,
       "attempts": 1,
       "conflicts": [],
-      "newest_date": "2026-11-22",
+      "newest_date": "2026-11-23",
       "ok": true,
       "records_seen": 10,
       "url": "https://www.lotteryusa.com/new-jersey/millionaire-for-life/"
@@ -63,7 +64,7 @@
       "url": "https://www.lotteryusa.com/new-jersey/pick-3/year"
     },
     "P3_MID": {
-      "added": 1,
+      "added": 0,
       "attempts": 1,
       "conflicts": [],
       "newest_date": "2026-11-23",
@@ -72,16 +73,16 @@
       "url": "https://www.lotteryusa.com/new-jersey/midday-pick-3/year"
     },
     "P4_EVE": {
-      "added": 0,
+      "added": 1,
       "attempts": 1,
       "conflicts": [],
-      "newest_date": "2026-11-22",
+      "newest_date": "2026-11-23",
       "ok": true,
       "records_seen": 50,
       "url": "https://www.lotteryusa.com/new-jersey/pick-4/year"
     },
     "P4_MID": {
-      "added": 1,
+      "added": 0,
       "attempts": 1,
       "conflicts": [],
       "newest_date": "2026-11-23",
